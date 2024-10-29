@@ -7,13 +7,13 @@
 # load libraries ----------------------------------------------------------
 
 library(tidyverse)
-library(readxl) # read xlsx files
+library(haven) # read spss sav files
 library(usmap) # plotting us map
 library(reshape2) # string split into cols
 
 # load data ---------------------------------------------------------------
 
-life_history_data_long <- read_xlsx("data/Final Project Data.xlsx")
+life_history_data_long <- read_sav("data/Final Project Data_long.sav")
 
 # take a look at variables with colnames, str, and summary
 colnames(life_history_data_long)
@@ -21,92 +21,16 @@ colnames(life_history_data_long)
 # mapping locations -------------------------------------------------------
 
 # need to put data into map appropriate format state abbrev and county
-locations_all <- life_history_data_long |> 
-  select(starts_with("R") | starts_with("Location"))
-
-locations_all <- cbind(
-  locations_all, 
-  colsplit(locations_all$`R1 Location`, ", ", names = c("r1_county", "r1_state"))
-)
-locations_all <- cbind(
-  locations_all,
-  colsplit(locations_all$`Location 2`, ", ", names = c("r2_county", "r2_state"))
-)
-locations_all <- cbind(
-  locations_all,
-  colsplit(locations_all$`R3 Location`, ", ", names = c("r3_county", "r3_state"))
-)
-locations_all <- cbind(
-  locations_all,
-  colsplit(locations_all$`R4 Location`, ", ", names = c("r4_county", "r4_state"))
-)
-locations_all <- cbind(
-  locations_all,
-  colsplit(locations_all$`R5 Location`, ", ", names = c("r5_county", "r5_state"))
+life_history_data_long <- cbind(
+  life_history_data_long, 
+  colsplit(life_history_data_long$Location, ", ", names = c("county", "state"))
 )
 
 # join state identifiers to this location all dataframe
-locations_all <- left_join(locations_all, statepop, by = join_by("r1_state" == "full"))
-
-# change names
-locations_all <- locations_all |> 
-  rename(
-    r1_state_abb = abbr, 
-    r1_state_fips = fips
-  )
-
-# repeat for r2-5 states
-locations_all <- left_join(locations_all, statepop, by = join_by("r2_state" == "full"))
-locations_all <- locations_all |> 
-  rename(
-    r2_state_abb = abbr, 
-    r2_state_fips = fips
-  )
-locations_all <- left_join(locations_all, statepop, by = join_by("r3_state" == "full"))
-locations_all <- locations_all |> 
-  rename(
-    r3_state_abb = abbr, 
-    r3_state_fips = fips
-  )
-locations_all <- left_join(locations_all, statepop, by = join_by("r4_state" == "full"))
-locations_all <- locations_all |> 
-  rename(
-    r4_state_abb = abbr, 
-    r4_state_fips = fips
-  )
-locations_all <- left_join(locations_all, statepop, by = join_by("r5_state" == "full"))
-locations_all <- locations_all |> 
-  rename(
-    r5_state_abb = abbr, 
-    r5_state_fips = fips
-  )
+life_history_data_long <- left_join(life_history_data_long, statepop, by = join_by("state" == "full"))
 
 # now can integrate county level identifiers
-locations_all <- left_join(locations_all, countypop, by = join_by("r1_state_abb" == "abbr", "r1_county" == "county"))
-locations_all <- locations_all |> 
-  rename(
-    r1_county_fips = fips
-  )
-locations_all <- left_join(locations_all, countypop, by = join_by("r2_state_abb" == "abbr", "r2_county" == "county"))
-locations_all <- locations_all |> 
-  rename(
-    r2_county_fips = fips
-  )
-locations_all <- left_join(locations_all, countypop, by = join_by("r3_state_abb" == "abbr", "r3_county" == "county"))
-locations_all <- locations_all |> 
-  rename(
-    r3_county_fips = fips
-  )
-locations_all <- left_join(locations_all, countypop, by = join_by("r4_state_abb" == "abbr", "r4_county" == "county"))
-locations_all <- locations_all |> 
-  rename(
-    r4_county_fips = fips
-  )
-locations_all <- left_join(locations_all, countypop, by = join_by("r5_state_abb" == "abbr", "r5_county" == "county"))
-locations_all <- locations_all |> 
-  rename(
-    r5_county_fips = fips
-  )
+life_history_data_long <- left_join(life_history_data_long, countypov, by = join_by("abbr", "county"))
 
 # now clean
 # remove population cols leftover from join

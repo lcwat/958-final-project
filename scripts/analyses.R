@@ -11,10 +11,12 @@
 
 library(tidyverse)
 library(readxl) # read xlsx files
+library(haven)
 
 # load and view data ------------------------------------------------------
 
 life_history_data_long <- read_xlsx("data/Final Project Data.xlsx")
+life_history_data_long <- read_sav("data/Final Project Data_long.sav")
 
 # take a look at variables with colnames, str, and summary
 colnames(life_history_data_long)
