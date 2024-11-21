@@ -24,3 +24,4 @@ summary(life_history_data_long)
 # no factors, if we want to use any of these categorical vars like sex, gender, etc.
 # need to be turned into factors and effect coded
 
+
