@@ -81,6 +81,46 @@ head(area_county)
 life_history_data_long <- life_history_data_long |> 
   left_join(area_county, by = join_by("Location" == "location"))
 
+scan <- life_history_data_long |> 
+  filter(is.na(geo_id))
+
+# appears to be some locations that are not present but have data, while some
+# others appear to not have merged with the df either to different names or 
+# missing pieces
+myc <- counties(cb = F)
+
+myc |> 
+  filter(str_detect(NAMELSAD, "El Paso"))
+
+mys <- states()
+
+mys |> 
+  filter(STATEFP == "48")
+# Conn is fp 09
+
+myc |> 
+  filter(STATEFP == "48")
+# somewhere along the way, the counties became planning regions, 
+# fairfield county is a part of the Greater Bridgeport Planning Region now
+# "Fairfield County" == "Greater Bridgeport Planning Region"
+
+life_history_data_long |> 
+  filter(str_detect(Location, "Tom Green")) |> 
+  select(Location)
+
+# also Saint should not be spelled out, St. instead
+# "Saint Clair County, Missouri" == "St. Clair County, Missouri" MO
+# "Saint Clair County, Illinois" == "St. Clair County, Illinois" IL
+# "Saint Charles County, Missouri" == "St. Charles County, Missouri" MO
+# "El Paso County, Kansas" == "El Paso County, 
+
+# misspellings
+# "Sedwick County, Kansas" == "Sedgwick County, Kansas"
+# "Rockwall, Texas" == "Rockwall County, Texas"
+# "Bethel Census Area" == "Bethel Census Area, Alaska"
+# "Southeast Fairbanks Census Area, Kansas" == "Southeast Fairbanks Census Area, Alaska"
+# "Tom Green County, Kansas" == "Tom Green County, Texas"
+# 
 
 
 # pop density -------------------------------------------------------------
