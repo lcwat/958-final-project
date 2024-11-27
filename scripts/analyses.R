@@ -15,13 +15,13 @@ library(haven)
 
 # load and view data ------------------------------------------------------
 
-life_history_data_long <- read_xlsx("data/Final Project Data.xlsx")
-life_history_data_long <- read_sav("data/Final Project Data_long.sav")
+LHS_wide <- read_xlsx("data/Final Project Data_wide.xlsx")
+LHS_long <- read_xlsx("data/Final Project Data_long.xlsx")
 
 # take a look at variables with colnames, str, and summary
-colnames(life_history_data_long)
-str(life_history_data_long) # variable types
-summary(life_history_data_long)
+colnames(LHS_long)
+str(LHS_long) # variable types
+summary(LHS_long)
 
 # no factors, if we want to use any of these categorical vars like sex, gender, etc.
 # need to be turned into factors and effect coded
