@@ -1,0 +1,27 @@
+Wide Format Variables
+---------------------
+ResponseId
+Age
+Gender
+Sex
+SexOrient - Sexual Orientation
+Race
+Relationship - Relationship status (single, married, etc.)
+Children? - Do you currently have any children? (Y/N)
+Plan for Children? - If you don't have children already, do you plan to do so at some point? (Definitely not - Definitely yes)
+Age of first child - how old do you expect to be (/were you) when you had your first child?
+#children - how many children do you expect to have over your lifetime
+SOI - Sociosexual orientation, measures attitude toward sexual behavior (restricted - unrestricted)
+RiskTaking - Measures attitude toward taking risks in various evolutionary contexts (low scores are less likely to take risks)
+DDk - overall delay-discounting score (low scores indicate preference for larger, later reward [i.e., less discounting])
+KSF - A general measure for life history strategy (low scores represent investment in short-term strategies)
+R1Location - Residence 1 location, not necessarily first chronologically, but 1st reported in the survey
+
+Long Format Variables
+---------------------
+in.av - participant-estimated average income for people living in that location
+HHin - participant-estimated household income for their family while living in that location
+roommates - number of roommates participant had while living in that location
+dens - participant-estimated population density for that location
+SR - participant-estimated sex-ratio (ratio of men to women, percentages above .5 represent a male-bias) for that location
+LE - participant-estimated life expectancy for that location ("What is the average age you expect someone living in this location to die?")
