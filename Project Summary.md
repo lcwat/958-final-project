@@ -36,12 +36,9 @@ Predictor Variables:
 
 Comments:
 
-	I think it best to limit our predictors to one from each of the categories described above (i.e., choose either population or household average for income and density). Since SR and LE were measured on a population-level, I think using population averages across the board makes the most sense. So the final model would be:
+	I think it best to limit our predictors to one from each of the categories described above (i.e., choose either population or household average for income and density).
+	Since SR and LE were measured on a population-level, I think using population averages across the board makes the most sense. So the final model would be:
 
 	Delay Discounting ~ Average_income + Population_density + SR + LE
 or
 	DDk ~ averagein + dens + SR + LE
-
-Multilevel Analysis:
-	
-	One final note is that we technically have two repeated measures variables: participantid and location number. In addition to modeling variation between participant slopes/intercepts, it might be cool to model variation in slopes/intercepts between each location subject's reported. Initial attempts at this also reduce the number of errors I've been getting.

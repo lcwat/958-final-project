@@ -25,7 +25,7 @@ attach(LHS_long)
   colnames(LHS_long)
   str(LHS_long) # variable types
   summary(LHS_long)
-
+  
 # Cluster Analysis? -------------------------------------------------------
 
 
@@ -40,7 +40,8 @@ attach(LHS_long)
   log.dens <- log(dens)
   sqrt.SR <- sqrt(SR)
   sq.LE <- LE*LE
-
+  DD <- DDk*1000
+  summary(DD)
 #Income
   hist(averagein) #pretty bad
   hist(log.av.in)
@@ -78,37 +79,22 @@ attach(LHS_long)
 
 #linear model, I think this is all we need
   badmodel <- lm(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE, data=LHS_long)
-  summary(badmodel)
+    summary(badmodel)
 
-#Might be nice to have the mixed effects models of the linear analysis for comparison
-  badmodel2 <- lmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|ResponseId), data=LHS_long)
-    #convergence + scale issues
-  badmodel3 <- lmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|locationid), data=LHS_long)
-    #only scale issues
-  badmodel4 <- lmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|ResponseId)+(1|locationid), data=LHS_long)
-    #optimization issues? also scale issues
-  badmodel5 <- lmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|ResponseId:locationid), data=LHS_long)
-    #convergence + scale issues
-  
-  #Here I attempt to fix the scale issues by normalizing predictors
-    badmodelz <- lmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId), data=LHS_long)
-      #didn't help
-
+  #Might be nice to have the mixed effects models of the linear analysis for comparison
+      badmodelz <- lmer(DD~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|locationid), data=LHS_long)
+        #singularity issue
+        summary(badmodelz)
+      
 # Generalized Linear Analysis ---------------------------------------------
-
-  goodmodel1 <- glmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|ResponseId), data=LHS_long, family=Gamma(link="log"))
-    #convergence + scale issues
   goodmodel2 <- glmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|locationid), data=LHS_long, family=Gamma(link="log"))
-    #only scale issues
-  goodmodel3 <- glmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|ResponseId)+(1|locationid), data=LHS_long, family=Gamma(link="log"))
-    #convergence + scale issues
-  goodmodel4 <- glmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|ResponseId:locationid), data=LHS_long, family=Gamma(link="log"))
-    #PIRL error? also scale issues
+    #scale and singularity issues
 
-  #Here I attempt to fix the scale issues by normalizing predictors
-    modelzglmer <- glmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId), data=LHS_long, family=Gamma(link="log"))
-      #didn't help
-    summary(modelzglmer)
+  #Here I fix the scale issues by normalizing predictors
+    goodmodelz <- glmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|locationid), data=LHS_long, family=Gamma(link="log"))
+      #still has singularity issue
+      summary(goodmodelz)
+    
 # Bayesian Analysis? ------------------------------------------------------
 
 
