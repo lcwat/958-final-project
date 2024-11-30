@@ -41,6 +41,7 @@ attach(LHS_long)
   sqrt.SR <- sqrt(SR)
   sq.LE <- LE*LE
   DD <- DDk*1000
+  logDD <- log(DDk)
   summary(DD)
 #Income
   hist(averagein) #pretty bad
@@ -82,19 +83,20 @@ attach(LHS_long)
     summary(badmodel)
 
   #Might be nice to have the mixed effects models of the linear analysis for comparison
-      badmodelz <- lmer(DD~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|locationid), data=LHS_long)
-        #singularity issue
-        summary(badmodelz)
-      
+      badmodelz <- lmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId), data=LHS_long)
+       summary(badmodelz)
+          #t-values are equal to 0, not sure what's going on
+        
 # Generalized Linear Analysis ---------------------------------------------
-  goodmodel2 <- glmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|locationid), data=LHS_long, family=Gamma(link="log"))
-    #scale and singularity issues
+  goodmodel <- glmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|ResponseId), data=LHS_long, family=Gamma(link="log"))
+    summary(goodmodel)
+      #this also looks awful
 
-  #Here I fix the scale issues by normalizing predictors
-    goodmodelz <- glmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|locationid), data=LHS_long, family=Gamma(link="log"))
-      #still has singularity issue
+  #Here I try to fix by normalizing predictors
+    goodmodelz <- glmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId), data=LHS_long, family=Gamma(link="log"))
       summary(goodmodelz)
-    
+        #didn't help
+      
 # Bayesian Analysis? ------------------------------------------------------
 
 
