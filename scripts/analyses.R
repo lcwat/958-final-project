@@ -14,11 +14,17 @@ library(readxl) # read xlsx files
 library(haven)
 library(lme4)
 library(MASS)
+library(brms)
+library(flexclust)
+library(ggdendro)
+library(NbClust)
+library(factoextra)
 
 # load and view data ------------------------------------------------------
 
 LHS_wide <- read_xlsx("data/Final Project Data_wide.xlsx")
 LHS_long <- read_xlsx("data/Final Project Data_long.xlsx")
+LHS_cluster <- read_xlsx("data/Final Project Data_cluster.xlsx")
 attach(LHS_long)
 
 # take a look at variables with colnames, str, and summary
@@ -27,11 +33,61 @@ attach(LHS_long)
   summary(LHS_long)
   
 # Cluster Analysis? -------------------------------------------------------
-
-
-# no factors, if we want to use any of these categorical vars like sex, gender, etc.
-# need to be turned into factors and effect coded
-
+  attach(LHS_cluster)
+    clust.scaled <- scale(LHS_cluster)
+    d <- dist(clust.scaled)
+  #cluster
+    ward <- hclust(d, method="ward.D")
+    wardn<-NbClust(clust.scaled, distance="euclidean", 
+                 min.nc=2, max.nc=15, method="average")
+  #dendro
+    View(ward$height)
+    plot(ward, main="Ward Clustering Dendogram", xlab="Participant")
+      labs(title="Ward Clustering Dendogram")
+  #scree
+      h <- ward$height[57:70]
+      a <- length(h)
+      plot1 <- data.frame(height = h, a = seq_len(a))
+    ggplot(plot1, aes(x=a, y=h)) +
+      geom_point() + geom_line() +theme()+ 
+      scale_x_continuous(breaks=seq(1,14, by = 1))+ labs(x="Number of Clusters", y=NULL)+ 
+      ggtitle("Scree Plot for Ward Clustering")
+  #CCC
+      ccc <- wardn$All.index[,4]
+      w <- length(ccc)
+      plot2 <- data.frame(CCC = ccc, w = seq_len(w))
+    ggplot(plot2, aes(x=w, y=ccc)) + geom_point() + geom_line() +
+      theme_minimal() + scale_x_continuous(breaks=seq_len(w)) +
+      labs(x="Number of Clusters") + ggtitle("CCC Plot for Ward Cluster Solutions")
+  #save
+    profiling<-cutree(ward,2)
+    table=data.frame(clust,profiling)
+    table
+#kmeans ------------------------------------------------------------------
+  #Cluster
+    km <- NbClust(clust.scaled, min.nc=2, max.nc=15, method="kmeans")
+    km? <- kmeans(na.omit(clust.scaled), ?, nstart=25)
+  #results
+    km3$size
+    km3$centers
+    aggregate(LHS_cluster, by=list(cluster2=km?$cluster), mean)
+  #scree
+      index<-as.data.frame(km$All.index)
+      b<-(2:15)
+    kplot <- data.frame(height = index$Dindex, b = 2:15)
+    ggplot(kplot, aes(x=b, y=index$Dindex)) + geom_point() + geom_line() +theme()+
+      scale_x_continuous(breaks=seq(2,15, by = 1))+ labs(x="Number of Clusters", y=NULL)+ 
+      ggtitle("Scree Plot for K Clustering")
+  #CCC
+      kccc=km$All.index[,4]
+      k <- length(kccc)
+      kplot2 <- data.frame(CCC = kccc, k = seq_len(k))
+    ggplot(kplot2, aes(x=k, y=kccc)) + geom_point() + geom_line() +
+      theme_minimal() + scale_x_continuous(breaks=seq_len(kc)) +
+      labs(x="Number of Clusters") + ggtitle("CCC Plot for Ward Cluster Solutions")
+  #save
+    table3=data.frame(clust2,km?$cluster)
+    table3
 
 # Variables Checks-------------------------------------------------------
 #Transformations
@@ -98,5 +154,9 @@ attach(LHS_long)
         #didn't help
       
 # Bayesian Analysis? ------------------------------------------------------
-
-
+    bayesmodel<-brm(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId), family= Gamma(link="log"), data=LHS_long, cores=4, file="bayesmodel.RDS")
+      summary(bayesmodel)
+      
+      plot(bayesmodel, variable = "^b_", regex = T)
+      plot(conditional_effects(bayesmodel, prob=.68))[[1]] 
+      
