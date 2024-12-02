@@ -63,8 +63,7 @@ attach(LHS_long)
     profiling<-cutree(ward,2)
     table=data.frame(clust,profiling)
     table
-#kmeans ------------------------------------------------------------------
-  #Cluster
+#kmeans
     km <- NbClust(clust.scaled, min.nc=2, max.nc=15, method="kmeans")
     km? <- kmeans(na.omit(clust.scaled), ?, nstart=25)
   #results
@@ -96,9 +95,7 @@ attach(LHS_long)
   log.dens <- log(dens)
   sqrt.SR <- sqrt(SR)
   sq.LE <- LE*LE
-  DD <- DDk*1000
   logDD <- log(DDk)
-  summary(DD)
 #Income
   hist(averagein) #pretty bad
   hist(log.av.in)
@@ -142,7 +139,11 @@ attach(LHS_long)
       badmodelz <- lmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId), data=LHS_long)
        summary(badmodelz)
           #t-values are equal to 0, not sure what's going on
-        
+       
+      testmodel <- lmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId:locationid), data=LHS_long)
+        #this produces better estimates, so I think this might be the correct RE structure 
+        #but it also introduces convergence issues.
+      
 # Generalized Linear Analysis ---------------------------------------------
   goodmodel <- glmer(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE+(1|ResponseId), data=LHS_long, family=Gamma(link="log"))
     summary(goodmodel)
@@ -152,7 +153,23 @@ attach(LHS_long)
     goodmodelz <- glmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId), data=LHS_long, family=Gamma(link="log"))
       summary(goodmodelz)
         #didn't help
-      
+
+    testmodel2 <- glmer(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId:locationid), data=LHS_long, family=Gamma(link="log"))
+      summary(testmodel2)
+        #looks better but convergence issues
+
+# Linear Analysis testing -------------------------------------------------
+      testmodel3 <- lm(logDD~sqrt.av.in+log.dens+sqrt.SR+sq.LE, data=LHS_long)
+      testmodel4 <- glm(DDk~sqrt.av.in+log.dens+sqrt.SR+sq.LE, data=LHS_long, family=Gamma(link="log"))
+        summary(testmodel3)
+        summary(testmodel4)
+          #shouldn't these be the same?
+      testmodel5 <- lm(logDD~z.t.in+z.t.dens+z.t.SR+z.t.LE, data=LHS_long)
+      testmodel6 <- glm(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE, data=LHS_long, family=Gamma(link="log"))
+        summary(testmodel5)
+        summary(testmodel6)
+          #this is also fucked isn't it??
+        
 # Bayesian Analysis? ------------------------------------------------------
     bayesmodel<-brm(DDk~z.t.in+z.t.dens+z.t.SR+z.t.LE+(1|ResponseId), family= Gamma(link="log"), data=LHS_long, cores=4, file="bayesmodel.RDS")
       summary(bayesmodel)
