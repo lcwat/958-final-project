@@ -69,28 +69,6 @@ LHS_long |>
 # predictor estimates of each subject (like more recent experience being 
 # weighted more or earlier experiences being weighted more)
 
-# participant 1 subjective income from 5 locations:
-incomes <- c(60000, 75000, 15000, 10000, 15000)
-
-# ex1. aggregate down to one measure using simple average:
-mean(incomes)
-
-# ex2. weighting more based on recent experiences:
-positions <- c(seq(1, 5, 1))
-# reverse order before weighting to bias towards later experiences
-weights <- 1 - ((max(positions) - positions + 1) / sum(positions))
-
-w_recent_income <- weights * incomes
-
-mean(w_recent_income)
-
-# ex3. weighting more based on earlier experiences:
-weights <- 1 - (positions / sum(positions))
-
-w_early_income <- weights * incomes
-
-mean(w_early_income)
-
 # Suggestions for complex techniques we could use:
 # b/c data is highly skewed, could use bootstrapping for regression weights 
 # between adjusted and non-adjusted predictor models to see how the variability 
