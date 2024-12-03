@@ -27,6 +27,34 @@ LHS_long <- read_xlsx("data/Final Project Data_long.xlsx")
 LHS_cluster <- read_xlsx("data/Final Project Data_cluster.xlsx")
 attach(LHS_long)
 
+# ggplot
+LHS_long |> 
+  ggplot(aes(x = averagein, y = DDk, color = as.factor(ResponseId))) +
+  geom_point() +
+  geom_line() +
+  theme(legend.position = "none")
+
+LHS_long |> 
+  ggplot(aes(x = averagein)) +
+  geom_density()
+
+# NOTE
+# mike suggests reducing each subjects location subj data down to aggregate means
+# for each predictor (income, density, sr, le), or if you want to include all 
+# of those locations, could find a way to weight each of the predictor estimates
+# of each subject (like more recent experience being weighted more or earlier
+# experiences being weighted more)
+# 
+# b/c data is highly skewed, could use bootstrapping for regression weights between 
+# adjusted and non-adjusted predictors to see how the variability in estimates change
+# as outliers are excluded and excluded in the bootstrapped samples 
+# 
+# use cross-validation to see how the model fits (encouraged to do at least one of
+# cross validation or bootstrapping, one is fine)
+# 
+# isn't quite sure about the quality of the data to reach firm conclusions
+
+
 # take a look at variables with colnames, str, and summary
   colnames(LHS_long)
   str(LHS_long) # variable types
