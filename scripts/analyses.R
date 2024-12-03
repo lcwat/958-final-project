@@ -38,21 +38,47 @@ LHS_long |>
   ggplot(aes(x = averagein)) +
   geom_density()
 
-# NOTE
-# mike suggests reducing each subjects location subj data down to aggregate means
-# for each predictor (income, density, sr, le), or if you want to include all 
-# of those locations, could find a way to weight each of the predictor estimates
-# of each subject (like more recent experience being weighted more or earlier
-# experiences being weighted more)
-# 
-# b/c data is highly skewed, could use bootstrapping for regression weights between 
-# adjusted and non-adjusted predictors to see how the variability in estimates change
-# as outliers are excluded and excluded in the bootstrapped samples 
+# NOTES FROM MIKE:
+# mike suggests reducing each subjects location/life history data down to 
+# aggregate means for each predictor (income, density, sr, le), or if you want 
+# to include all of those locations, could find a way to weight each of the 
+# predictor estimates of each subject (like more recent experience being 
+# weighted more or earlier experiences being weighted more)
+
+# participant 1 subjective income from 5 locations:
+incomes <- c(60000, 75000, 15000, 10000, 15000)
+
+# ex1. aggregate down to one measure using simple average:
+mean(incomes)
+
+# ex2. weighting more based on recent experiences:
+positions <- c(seq(1, 5, 1))
+# reverse order before weighting to bias towards later experiences
+weights <- 1 - ((max(positions) - positions + 1) / sum(positions))
+
+w_recent_income <- weights * incomes
+
+mean(w_recent_income)
+
+# ex3. weighting more based on earlier experiences:
+weights <- 1 - (positions / sum(positions))
+
+w_early_income <- weights * incomes
+
+mean(w_early_income)
+
+# Suggestions for complex techniques we could use:
+# b/c data is highly skewed, could use bootstrapping for regression weights 
+# between adjusted and non-adjusted predictor models to see how the variability 
+# in estimates change as outliers are excluded and excluded in the bootstrapped 
+# samples 
 # 
 # use cross-validation to see how the model fits (encouraged to do at least one of
 # cross validation or bootstrapping, one is fine)
 # 
-# isn't quite sure about the quality of the data to reach firm conclusions
+# isn't quite sure about the quality of the data to reach firm conclusions, 
+# recommends using advanced technique to ensure the discrepencies in data are 
+# properly accounted for
 
 
 # take a look at variables with colnames, str, and summary
