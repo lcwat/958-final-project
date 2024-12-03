@@ -20,7 +20,7 @@ library(crsuggest) # suggest best cartographic set for dataset
 
 # life_history_data_long <- read_sav("data/Final Project Data_long.sav")
 life_history_data_long <- read_csv("data/life-hist-data-long.csv")
-life_history_data_wide <- read_xlsx("data/Final Project Data.xlsx")
+life_history_data_long <- read_xlsx("data/Final Project Data_long.xlsx")
 
 # take a look at variables with colnames, str, and summary
 colnames(life_history_data_long)
@@ -70,7 +70,7 @@ area_county <- shift_geometry(area_county)
 
 # get area
 area_county <- area_county |> 
-  select(
+  dplyr::select(
     statefips = STATEFP,
     countyfips = COUNTYFP,
     county = NAMELSAD,
@@ -146,6 +146,9 @@ life_history_data_long |>
 # "Tom Green County, Kansas" == "Tom Green County, Texas"
 # "San Diego County, Kansas" == "San Diego County, California"
 
+life_history_data_long <- life_history_data_long |> 
+  rename(Location = location)
+
 # use case when to replace misspellings
 life_history_data_long <- life_history_data_long |> 
   mutate(
@@ -167,74 +170,6 @@ life_history_data_long <- life_history_data_long |>
 
 # save fixes
 write_csv(life_history_data_long, "data/life-hist-data-long.csv")
-
-
-# wide data ---------------------------------------------------------------
-
-# orig wide data file
-# need to put data into map appropriate format state abbrev and county
-life_history_data_wide <- cbind(
-  life_history_data_long, 
-  colsplit(life_history_data_long$Location, ", ", names = c("county", "state"))
-)
-
-# join state identifiers to this location all dataframe
-life_history_data_long <- left_join(life_history_data_long, statepop, by = join_by("state" == "full"))
-
-# now can integrate county level identifiers
-life_history_data_long <- left_join(life_history_data_long, countypov, by = join_by("abbr", "county"))
-
-# now clean
-# remove population cols leftover from join
-locations_all <- locations_all |> 
-  select(!starts_with("pop"))
-
-# remove old location cols
-locations_all <- locations_all |> 
-  select(!contains("Location"))
-
-# rename descriptives for county
-locations_all <- locations_all |> 
-  rename(
-    r1_ave_income = R1in.av, 
-    r2_ave_income = R2in.av, 
-    r3_ave_income = R3in.av, 
-    r4_ave_income = R4in.av,
-    r5_ave_income = R5in.av, 
-    r1_hh_income = R1HHin, 
-    r2_hh_income = R2HHin,
-    r3_hh_income = R3HHin,
-    r4_hh_income = R4HHin,
-    r5_hh_income = R5HHin,
-    r1_roommates = R1roommates,
-    r2_roommates = R2roommates,
-    r3_roommates = R3roommates,
-    r4_roommates = R4roommates,
-    r5_roommates = R5roommates
-  )
-
-locations_all <- locations_all |> 
-  relocate(
-    ResponseId:RiskTaking,
-    r1_county_fips, r1_county, r1_state_abb,
-    r1_ave_income:R1LE,
-    r2_county_fips, r2_county, r2_state_abb,
-    r2_ave_income:R2LE,
-    r3_county_fips, r3_county, r3_state_abb,
-    r3_ave_income:R3LE,
-    r4_county_fips, r4_county, r4_state_abb,
-    r4_ave_income:R4LE,
-    r5_county_fips, r5_county, r5_state_abb,
-    r5_ave_income:R5LE
-  )
-
-# remove back end
-locations_all <- locations_all |> 
-  select(ResponseId:R5LE)
-
-# turn r1fips into fips for plotting
-locations_all <- locations_all |> 
-  rename(fips = r1_county_fips)
 
 
 # pop density -------------------------------------------------------------
@@ -324,7 +259,7 @@ sum_locations <- sum_locations |>
     new_total = if_else(total == 0, NA, total)
   )
 
-# plot with sf
+# plot count with sf
 sum_locations |> 
   ggplot() +
   
@@ -346,6 +281,55 @@ sum_locations |>
   ) +
   
   theme_void()
+
+# trying to make function to streamline map creation, but not working yet
+plot_ave_county_data <- function(
+    sf_df, states_sf_df, variable, variable_name = "My Variable",
+    scale_fill_option = "magma",
+    scale_begin = .5, scale_end = 1
+  ) {
+  # group by county and calc. ave. for that variable to represent whole county
+  to_plot <- sf_df |> 
+    group_by(location) |> 
+    summarise(
+      ave_var_over_county = mean(variable)
+    )
+  
+  # now plot it
+  to_plot |> 
+    ggplot() +
+    
+    geom_sf(
+      aes(fill = ave_var_over_county), 
+      color = NA
+    ) + 
+    
+    geom_sf(
+      data = states_sf_df, 
+      fill = NA, color = "grey95"
+    ) +
+    
+    # fill the counties with data
+    scale_fill_viridis_c(
+      variable_name,
+      option = scale_fill_option, na.value = "black",
+      begin = scale_begin, end = scale_end
+    ) +
+    
+    theme_void()
+}
+
+toplot <- plot_counties |> 
+  group_by(location) |> 
+  summarize(
+    mean_ddk = mean(DDk, na.rm = T)
+  )
+
+plot_ave_county_data(
+  plot_counties, states, 
+  variable = DDk, variable_name = "Delay Discounting Score",
+  scale_fill_option = "magma"
+)
 
 ggsave(
   "plots/subj-by-county.png", device = "png",

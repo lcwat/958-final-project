@@ -4,6 +4,30 @@
 ## Jacob Wilson
 ## 
 ## init: 10/16/24
+## 
+## PLAN:
+## 1. create informative averages of each of the life history variables based 
+## on when the person lived in that location
+##  a. early critical period hypothesis: earlier life experiences hold more 
+##  weight than later, create weighted average that weights more recent exper-
+##  iences lower
+##  b. recency hypothesis: most recent life experience influences psychology 
+##  more, create weighted average that weights more recent experiences higher
+##  c. consider whether to transform the data before weighting or after 
+##  
+## 2. create two models, a simple linear model and a generalized linear model
+## using gamma error distribution and a log link with all predictors for both
+## hypotheses
+##  a. linear model could utilize a log transformation and/or no transformation
+##  to be a really shitty model
+##  b. check assumptions using performance and go with the better model that 
+##  matches those best (AIC will not be helpful)
+##  c. report results (tables, figures, etc.)
+##
+## 3. to avoid overfitting given there will be about 10 or so predictors, 
+## we will use k-fold cross validation for the preferred model to ensure that
+## the model validates well within the dataset 
+##  a. report results of robustness
 
 
 
@@ -76,9 +100,7 @@ mean(w_early_income)
 # use cross-validation to see how the model fits (encouraged to do at least one of
 # cross validation or bootstrapping, one is fine)
 # 
-# isn't quite sure about the quality of the data to reach firm conclusions, 
-# recommends using advanced technique to ensure the discrepencies in data are 
-# properly accounted for
+# 
 
 
 # take a look at variables with colnames, str, and summary
