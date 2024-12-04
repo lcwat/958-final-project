@@ -51,7 +51,7 @@ recency_weights <- 1 / (exp(positions - 1))
 ####################
 
 # pass in vector to these functions to do the weighting
-primacy_weighting <- function(vec) {
+primacy_weighting <- function(vec, transformation = "none") {
   # check to see if all NA
   if(length(vec[is.na(vec)]) == 5) {
     new_vec <- c(NA, NA, NA, NA, NA)
@@ -60,14 +60,30 @@ primacy_weighting <- function(vec) {
     # first
     
     ## apply transformations here if needed
-    
-    new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
+    if(transformation == "none") {
+      new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
+    } else if(transformation == "log") {
+      # log transform
+      vec <- log(vec)
+      
+      new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
+    } else if(transformation == "root") {
+      # square root
+      vec <- sqrt(vec)
+      
+      new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
+    } else if(transformation == "square") {
+      # squared
+      vec <- vec^2
+      
+      new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
+    }
   }
   
   return(new_vec)
 }
 
-recency_weighting <- function(vec) {
+recency_weighting <- function(vec, transformation = "none") {
   # check to see if all NA
   if(length(vec[is.na(vec)]) == 5) {
     new_vec <- c(NA, NA, NA, NA, NA)
@@ -76,8 +92,24 @@ recency_weighting <- function(vec) {
     # most recent
     
     ## apply transformations here if needed
-    
-    new_vec <- vec - ((vec - vec[[length(vec[!is.na(vec)])]]) * recency_weights)
+    if(transformation == "none") {
+      new_vec <- vec - ((vec - vec[[length(vec[!is.na(vec)])]]) * recency_weights)
+    } else if(transformation == "log") {
+      # log transform
+      vec <- log(vec)
+      
+      new_vec <- vec - ((vec - vec[[length(vec[!is.na(vec)])]]) * recency_weights)
+    } else if(transformation == "root") {
+      # square root
+      vec <- sqrt(vec)
+      
+      new_vec <- vec - ((vec - vec[[length(vec[!is.na(vec)])]]) * recency_weights)
+    } else if(transformation == "square") {
+      # squared
+      vec <- vec^2
+      
+      new_vec <- vec - ((vec - vec[[length(vec[!is.na(vec)])]]) * recency_weights)
+    }
   }
   
   return(new_vec)
@@ -86,9 +118,9 @@ recency_weighting <- function(vec) {
 # test
 incomes <- c(60000, 70000, 150000, NA, NA)
 
-recency_weighting(incomes)
+recency_weighting(incomes, "root")
 
-mean(primacy_weighting(incomes), na.rm = T)
+mean(primacy_weighting(incomes, "log"), na.rm = T)
 
 # weight the variables
 weighted_df <- wide_lhs_data |> 
