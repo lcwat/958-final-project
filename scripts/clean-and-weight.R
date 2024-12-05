@@ -26,38 +26,87 @@ names(wide_lhs_data) <- str_replace(names(wide_lhs_data), "x", "r")
 
 # clean
 
+## -----------------------------------------------------------------------------
+##      weighting
+## -----------------------------------------------------------------------------
 
-# workshopping weighting --------------------------------------------------
+# function for setting weights and can specify "option" for weighting
+# either linear decreasing weight or exponential for larger dropoff
+# set "weighting" to either primacy or recency for whichever is being used
 
-# added two columns to indicate how long they stayed in that location in years
-# and when they lived there
-# length and move
-
-# SET WEIGHTS HERE #
-positions <- seq(1, 5, 1)
-
-# decreasing linearly from 1st position when applied to difference
-# 0.6666667 0.7333333 0.8000000 0.8666667 0.9333333
-primacy_weights <- 1 - ((max(positions) - positions + 1) / sum(positions))
-# or increasing linearly from 1st position
-# 0.9333333 0.8666667 0.8000000 0.7333333 0.6666667
-recency_weights <- 1 - (positions / sum(positions))
-
-# could also do exponential decay
-# 1.00000000 0.36787944 0.13533528 0.04978707 0.01831564
-primacy_weights <- 1 / (exp((max(positions) - positions + 1) - 1))
-recency_weights <- 1 / (exp(positions - 1))
-
-####################
+set_weights <- function(number_pos, weighting, option = "linear") {
+  # set the number of positions from length of sequence
+  if(number_pos)
+  
+  positions <- seq(1, number_pos, 1)
+  
+  # if there is only one location, don't bother
+  if(number_pos == 1) {
+    # just use these vectors
+    if(weighting == "primacy") {
+      weight_vec <- c(1, 0, 0, 0, 0)
+    } else if(weighting == "recency") {
+      weight_vec <- c(0, 0, 0, 0, 1)
+    } else {
+      stop("Please specify proper weighting parameter: primacy or recency")
+    }
+  } else {
+    # use the length to set vector of weights to be applied to data sequence of 
+    # same length
+    if(option == "linear") {
+      if(weighting == "primacy") {
+        # decreasing linearly from 1st position when applied to difference
+        weights <- 1 - ((max(positions) - positions + 1) / sum(positions))
+      } else if(weighting == "recency") {
+        # or increasing linearly from 1st position
+        weights <- 1 - (positions / sum(positions))
+      } else {
+        stop("Please specify proper weighting parameter: primacy or recency")
+      }
+    } else if(option == "exponential") {
+      if(weighting == "primacy") {
+        # decreasing exponentially from 1st position when applied to difference
+        weights <- 1 / (exp((max(positions) - positions + 1) - 1))
+      } else if(weighting == "recency") {
+        # or increasing exponentially from 1st position
+        weights <- 1 / (exp(positions - 1))
+      } else {
+        stop("Please specify proper weighting parameter: primacy or recency")
+      }
+    } else {
+      stop("Please specify proper option: linear or exponential")
+    }
+  }
+  
+  
+  
+  # add zeros to match vector length of 5
+  num_zero <- 5 - length(weights)
+  vec_zero <- rep(0, num_zero)
+  weight_vec <- c(weights, vec_zero)
+  
+  return(weight_vec)
+}
 
 # pass in vector to these functions to do the weighting
-primacy_weighting <- function(vec, transformation = "none") {
+# can specify particular transformation to the variable: "none" for identity, 
+# "log" for log(), "root" for sqrt(), "square" for x^2
+# also can specify weighting function option: (default) "linear" for linear 
+# weight decrease as a function of position and "exponential" for exponential 
+# weight decrease
+
+primacy_weighting <- function(vec, transformation = "none", option = "linear") {
   # check to see if all NA
   if(length(vec[is.na(vec)]) == 5) {
     new_vec <- c(NA, NA, NA, NA, NA)
   } else {
     # multiply diff between vec by first value, pull more recent values towards 
     # first
+    
+    # set weights according to length of sequence and option
+    primacy_weights <- set_weights(
+      length(!is.na(vec)), "primacy", option = option
+    )
     
     ## apply transformations here if needed
     if(transformation == "none") {

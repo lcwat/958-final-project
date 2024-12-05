@@ -292,7 +292,7 @@ plot_ave_county_data <- function(
   to_plot <- sf_df |> 
     group_by(location) |> 
     summarise(
-      ave_var_over_county = mean(variable)
+      ave_var_over_county = mean(variable, na.rm = T)
     )
   
   # now plot it
