@@ -89,75 +89,92 @@ set_weights <- function(number_pos, weighting, option = "linear") {
 }
 
 # pass in vector to these functions to do the weighting
-# can specify particular transformation to the variable: "none" for identity, 
-# "log" for log(), "root" for sqrt(), "square" for x^2
-# also can specify weighting function option: (default) "linear" for linear 
-# weight decrease as a function of position and "exponential" for exponential 
-# weight decrease
+# 
+# args: 
+# 1. vec = vector of length 5 (including NA)
+# 2. length_vec = vector of length 
+# 3. weighting = either "primacy" to pull aggregate towards earliest
+# value, "recency" to pull aggregate towards most recent value, 
+# "los" to pull average more towards values with longer lengths of stay, 
+# "primacy_los" to combine both primacy and los weighting, and "recency_los"
+# to apply both recency and los
+# 4. transformation = specify particular transformation to the variable: 
+# (default) "none" for identity, "log" for log(), "root" for sqrt(), 
+# "square" for x^2
+# 5. option: weighting type, (default) "linear" for linear weight decrease as a 
+# function of position and "exponential" for exponential weight decrease
 
-primacy_weighting <- function(vec, transformation = "none", option = "linear") {
+weighted_vector <- function(
+    vec, length_vec, 
+    weighting, transformation = "none", option = "linear"
+  ) {
   # check to see if all NA
-  if(length(vec[is.na(vec)]) == 5) {
+  if(sum(is.na(vec)) == 5) {
     new_vec <- c(NA, NA, NA, NA, NA)
   } else {
-    # multiply diff between vec by first value, pull more recent values towards 
-    # first
-    
-    # set weights according to length of sequence and option
-    primacy_weights <- set_weights(
-      length(!is.na(vec)), "primacy", option = option
-    )
-    
     ## apply transformations here if needed
     if(transformation == "none") {
-      new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
+      # nothing
     } else if(transformation == "log") {
       # log transform
       vec <- log(vec)
-      
-      new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
     } else if(transformation == "root") {
       # square root
       vec <- sqrt(vec)
-      
-      new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
     } else if(transformation == "square") {
       # squared
       vec <- vec^2
-      
-      new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
     }
-  }
-  
-  return(new_vec)
-}
-
-recency_weighting <- function(vec, transformation = "none") {
-  # check to see if all NA
-  if(length(vec[is.na(vec)]) == 5) {
-    new_vec <- c(NA, NA, NA, NA, NA)
-  } else {
-    # multiply diff between vec by last value, pull more early values towards 
-    # most recent
     
-    ## apply transformations here if needed
-    if(transformation == "none") {
-      new_vec <- vec - ((vec - vec[[length(vec[!is.na(vec)])]]) * recency_weights)
-    } else if(transformation == "log") {
-      # log transform
-      vec <- log(vec)
+    # find the actual length of the vector (avoids repeating code below)
+    actual_length <- sum(!is.na(vec))
+    
+    # now depending on weighting chosen, alter formula for weights and how
+    # it is applied to the difference from first or last value in sequence
+    if(weighting == "primacy") {
+      # set weights according to sequence and option
+      primacy_weights <- set_weights(
+        actual_length, "primacy", option = option
+      )
       
-      new_vec <- vec - ((vec - vec[[length(vec[!is.na(vec)])]]) * recency_weights)
-    } else if(transformation == "root") {
-      # square root
-      vec <- sqrt(vec)
+      # apply weights to vector of values
+      new_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
+    } else if(weighting == "recency") {
+      # set weights
+      recency_weights <- set_weights(
+        actual_length, "recency", option = option
+      )
       
-      new_vec <- vec - ((vec - vec[[length(vec[!is.na(vec)])]]) * recency_weights)
-    } else if(transformation == "square") {
-      # squared
-      vec <- vec^2
+      # apply weights to vector of values
+      new_vec <- vec - ((vec - vec[actual_length]) * recency_weights)
+    } else if(weighting == "los") {
+      # set weights according to length of stay
+      los_weights <- sapply(length_vec, function(x) x / sum(length_vec, na.rm = T))
       
-      new_vec <- vec - ((vec - vec[[length(vec[!is.na(vec)])]]) * recency_weights)
+      # apply weights to vector of values (simple product)
+      new_vec <- vec * los_weights
+    } else if(weighting == "primacy_los") {
+      # set weights according to length of stay and primacy
+      los_weights <- sapply(length_vec, function(x) x / sum(length_vec, na.rm = T))
+      primacy_weights <- set_weights(
+        actual_length, "primacy", option = option
+      )
+      
+      # apply both to the vector of values (primacy first)
+      prim_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
+      new_vec <- prim_vec * los_weights
+    } else if(weighting == "recency_los") {
+      # set weights according to length of stay and recency
+      los_weights <- sapply(length_vec, function(x) x / sum(length_vec, na.rm = T))
+      primacy_weights <- set_weights(
+        actual_length, "recency", option = option
+      )
+      
+      # apply both to the vector of values (recency first)
+      rec_vec <- vec - ((vec - vec[actual_length]) * recency_weights)
+      new_vec <- rec_vec * los_weights
+    } else {
+      stop("Please specify proper weighting parameter: primacy or recency")
     }
   }
   
@@ -167,9 +184,7 @@ recency_weighting <- function(vec, transformation = "none") {
 # test
 incomes <- c(60000, 70000, 150000, NA, NA)
 
-recency_weighting(incomes, "root")
-
-mean(primacy_weighting(incomes, "log"), na.rm = T)
+mean(weighted_vector(incomes, "primacy"), na.rm = T)
 
 # weight the variables
 weighted_df <- wide_lhs_data |> 
