@@ -88,7 +88,7 @@ set_weights <- function(number_pos, weighting, option = "linear") {
   return(weight_vec)
 }
 
-# pass in vector to these functions to do the weighting
+# pass in vector to this functions to do the weighting
 # 
 # args: 
 # 1. vec = vector of length 5 (including NA)
@@ -111,6 +111,23 @@ weighted_vector <- function(
   # check to see if all NA
   if(sum(is.na(vec)) == 5) {
     new_vec <- c(NA, NA, NA, NA, NA)
+  } else if(sum(!is.na(vec)) == 1) { 
+    # no weighting or aggregating to be done
+    ## apply transformations here if needed
+    if(transformation == "none") {
+      # nothing
+    } else if(transformation == "log") {
+      # log transform
+      vec <- log(vec)
+    } else if(transformation == "root") {
+      # square root
+      vec <- sqrt(vec)
+    } else if(transformation == "square") {
+      # squared
+      vec <- vec^2
+    }
+    
+    new_vec <- vec
   } else {
     ## apply transformations here if needed
     if(transformation == "none") {
@@ -149,30 +166,35 @@ weighted_vector <- function(
       new_vec <- vec - ((vec - vec[actual_length]) * recency_weights)
     } else if(weighting == "los") {
       # set weights according to length of stay
-      los_weights <- sapply(length_vec, function(x) x / sum(length_vec, na.rm = T))
+      los_weights <- sapply(
+        length_vec, function(x) x / sum(length_vec, na.rm = T)
+      )
       
       # apply weights to vector of values (simple product)
       new_vec <- vec * los_weights
     } else if(weighting == "primacy_los") {
       # set weights according to length of stay and primacy
-      los_weights <- sapply(length_vec, function(x) x / sum(length_vec, na.rm = T))
+      los_weights <- sapply(
+        length_vec, function(x) x / sum(length_vec, na.rm = T)
+      )
       primacy_weights <- set_weights(
         actual_length, "primacy", option = option
       )
       
       # apply both to the vector of values (primacy first)
-      prim_vec <- vec - ((vec - vec[[1]]) * primacy_weights)
-      new_vec <- prim_vec * los_weights
+      new_vec <- (vec - ((vec - vec[[1]]) * primacy_weights)) * los_weights
     } else if(weighting == "recency_los") {
       # set weights according to length of stay and recency
-      los_weights <- sapply(length_vec, function(x) x / sum(length_vec, na.rm = T))
-      primacy_weights <- set_weights(
+      los_weights <- sapply(
+        length_vec, function(x) x / sum(length_vec, na.rm = T)
+      )
+      recency_weights <- set_weights(
         actual_length, "recency", option = option
       )
       
       # apply both to the vector of values (recency first)
-      rec_vec <- vec - ((vec - vec[actual_length]) * recency_weights)
-      new_vec <- rec_vec * los_weights
+      new_vec <- 
+        (vec - ((vec - vec[actual_length]) * recency_weights)) * los_weights
     } else {
       stop("Please specify proper weighting parameter: primacy or recency")
     }
@@ -183,59 +205,202 @@ weighted_vector <- function(
 
 # test
 incomes <- c(60000, 70000, 150000, NA, NA)
+length_of_stay <- c(10, 10, 2, NA, NA)
+
+vect1 <- weighted_vector(incomes, length_of_stay, "recency")
+
+log_vec <- weighted_vector(incomes, length_of_stay, "recency", "log")
+
+log(vect1)
+
+# slight difference
 
 mean(weighted_vector(incomes, "primacy"), na.rm = T)
 
-# weight the variables
+
+# weight the variables ----------------------------------------------------
+
 weighted_df <- wide_lhs_data |> 
   group_by(response_id) |> 
   summarize(
+    # average income vars
+    mean_av_income = mean(
+      c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+      na.rm = T
+    ),
     prim_av_income = mean(
-      primacy_weighting(c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av)),
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy"
+      ),
       na.rm = T
     ), 
     rec_av_income = mean(
-      recency_weighting(c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av)), 
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency"
+      ),
+      na.rm = T
+    ),
+    los_av_income = mean(
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "los"
+      ),
       na.rm = T
     ), 
-    mean_income = mean(
-      c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+    prim_los_av_income = mean(
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy_los"
+      ),
       na.rm = T
     ), 
-    prim_density = mean(
-      primacy_weighting(c(r1dens, r2dens, r3dens, r4dens, r5dens)), 
+    rec_los_av_income = mean(
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency_los"
+      ),
       na.rm = T
-    ), 
-    rec_density = mean(
-      recency_weighting(c(r1dens, r2dens, r3dens, r4dens, r5dens)), 
-      na.rm = T
-    ), 
+    ),
+    # density vars
     mean_density = mean(
       c(r1dens, r2dens, r3dens, r4dens, r5dens), 
       na.rm = T
+    ),
+    prim_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy"
+      ),
+      na.rm = T
     ), 
-    prim_sex_ratio = mean(
-      primacy_weighting(c(r1sr, r2sr, r3sr, r4sr, r5sr)), 
+    rec_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency"
+      ),
       na.rm = T
     ),
-    rec_sex_ratio = mean(
-      recency_weighting(c(r1sr, r2sr, r3sr, r4sr, r5sr)), 
+    los_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "los"
+      ),
       na.rm = T
     ), 
+    prim_los_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy_los"
+      ),
+      na.rm = T
+    ), 
+    rec_los_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency_los"
+      ),
+      na.rm = T
+    ),
+    # sex ratio vars
     mean_sex_ratio = mean(
       c(r1sr, r2sr, r3sr, r4sr, r5sr), 
       na.rm = T
+    ),
+    prim_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy"
+      ),
+      na.rm = T
     ), 
+    rec_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency"
+      ),
+      na.rm = T
+    ),
+    los_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "los"
+      ),
+      na.rm = T
+    ), 
+    prim_los_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy_los"
+      ),
+      na.rm = T
+    ), 
+    rec_los_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency_los"
+      ),
+      na.rm = T
+    ),
+    # life expectancy vars
+    mean_life_expct = mean(
+      c(r1le, r2le, r3le, r4le, r5le), 
+      na.rm = T
+    ),
     prim_life_expct = mean(
-      primacy_weighting(c(r1le, r2le, r3le, r4le, r5le)), 
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy"
+      ),
       na.rm = T
     ), 
     rec_life_expct = mean(
-      recency_weighting(c(r1sr, r2sr, r3sr, r4sr, r5sr)), 
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency"
+      ),
       na.rm = T
     ),
-    mean_life_expct = mean(
-      c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+    los_life_expct = mean(
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "los"
+      ),
+      na.rm = T
+    ), 
+    prim_los_life_expct = mean(
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy_los"
+      ),
+      na.rm = T
+    ), 
+    rec_los_life_expct = mean(
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency_los"
+      ),
       na.rm = T
     )
   )
@@ -245,10 +410,214 @@ weighted_lhs_data <- left_join(wide_lhs_data, weighted_df)
 
 # simplify data file
 linear_weighted_lhs_agg_data <- weighted_lhs_data |> 
-  dplyr::select(1:15, 61:72)
+  dplyr::select(1:15, 61:90)
 
-# file to use, should think about transformations before or after weighting, 
-# I'm leaning towards before
+# no transformations applied prior, but have option to do so with extra argument
+write_csv(linear_weighted_lhs_agg_data, "data/lin-weight-untransf-lhs-data.csv")
+
+
+# transform and weight ----------------------------------------------------
+
+# transformations
 # log <- income, density
 # sqrt <- sex ratio
 # square <- life expct
+
+# weight the variables, but transform first
+transf_weighted_df <- wide_lhs_data |> 
+  group_by(response_id) |> 
+  summarize(
+    # average income vars
+    log_mean_av_income = mean(
+      log(c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av)), 
+      na.rm = T
+    ),
+    log_prim_av_income = mean(
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy", "log"
+      ),
+      na.rm = T
+    ), 
+    log_rec_av_income = mean(
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency", "log"
+      ),
+      na.rm = T
+    ),
+    log_los_av_income = mean(
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "los", "log"
+      ),
+      na.rm = T
+    ), 
+    log_prim_los_av_income = mean(
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy_los", "log"
+      ),
+      na.rm = T
+    ), 
+    log_rec_los_av_income = mean(
+      weighted_vector(
+        c(r1in_av, r2in_av, r3in_av, r4in_av, r5in_av), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency_los", "log"
+      ),
+      na.rm = T
+    ),
+    # density vars
+    log_mean_density = mean(
+      log(c(r1dens, r2dens, r3dens, r4dens, r5dens)), 
+      na.rm = T
+    ),
+    log_prim_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy", "log"
+      ),
+      na.rm = T
+    ), 
+    log_rec_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency", "log"
+      ),
+      na.rm = T
+    ),
+    log_los_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "los", "log"
+      ),
+      na.rm = T
+    ), 
+    log_prim_los_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy_los", "log"
+      ),
+      na.rm = T
+    ), 
+    log_rec_los_density = mean(
+      weighted_vector(
+        c(r1dens, r2dens, r3dens, r4dens, r5dens), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency_los", "log"
+      ),
+      na.rm = T
+    ),
+    # sex ratio vars
+    sqrt_mean_sex_ratio = mean(
+      sqrt(c(r1sr, r2sr, r3sr, r4sr, r5sr)), 
+      na.rm = T
+    ),
+    sqrt_prim_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy", "root"
+      ),
+      na.rm = T
+    ), 
+    sqrt_rec_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency", "root"
+      ),
+      na.rm = T
+    ),
+    sqrt_los_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "los", "root"
+      ),
+      na.rm = T
+    ), 
+    sqrt_prim_los_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy_los", "root"
+      ),
+      na.rm = T
+    ), 
+    sqrt_rec_los_sex_ratio = mean(
+      weighted_vector(
+        c(r1sr, r2sr, r3sr, r4sr, r5sr), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency_los", "root"
+      ),
+      na.rm = T
+    ),
+    # life expectancy vars
+    sq_mean_life_expct = mean(
+      (c(r1le, r2le, r3le, r4le, r5le))^2, 
+      na.rm = T
+    ),
+    sq_prim_life_expct = mean(
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy", "square"
+      ),
+      na.rm = T
+    ), 
+    sq_rec_life_expct = mean(
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency", "square"
+      ),
+      na.rm = T
+    ),
+    sq_los_life_expct = mean(
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "los", "square"
+      ),
+      na.rm = T
+    ), 
+    sq_prim_los_life_expct = mean(
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "primacy_los", "square"
+      ),
+      na.rm = T
+    ), 
+    sq_rec_los_life_expct = mean(
+      weighted_vector(
+        c(r1le, r2le, r3le, r4le, r5le), 
+        c(r1length, r2length, r3length, r4length, r5length), 
+        "recency_los", "square"
+      ),
+      na.rm = T
+    )
+  )
+
+# save it with transf applied
+df <- left_join(wide_lhs_data, transf_weighted_df)
+
+# simplify data file
+df <- df |> 
+  dplyr::select(1:15, 61:90)
+
+write_csv(df, "data/transf-lin-weight-lhs-data.csv")
+
+weighted_df |> 
+  ggplot(aes(x = log(mean_av_income))) +
+  geom_density()
