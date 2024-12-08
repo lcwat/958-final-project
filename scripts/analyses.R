@@ -6,8 +6,8 @@
 ## init: 10/16/24
 ## 
 ## PLAN:
-## 1. create informative averages of each of the life history variables based 
-## on when the person lived in that location
+## 1. (done) create informative averages of each of the life history variables based 
+## on when the person lived in that location 
 ##  a. early critical period hypothesis: earlier life experiences hold more 
 ##  weight than later, create weighted average that weights more recent exper-
 ##  iences lower
@@ -43,8 +43,18 @@ library(MASS)
 
 LHS_wide <- read_xlsx("data/Final Project Data_wide.xlsx")
 LHS_long <- read_xlsx("data/Final Project Data_long.xlsx")
-LHS_weights <- read.csv("data/lin-weight-untransf-lhs-data.csv")
+
+# adjusted predictors file (untransformed)
+LHS_weights <- read_csv("data/lin-weight-untransf-lhs-data.csv")
 attach(LHS_weights)
+
+# prefixes: 
+# 1. mean = unweighted aggregate score using simple mean
+# 2. prim = weighted aggregate score favoring earlier life locations
+# 3. rec = weighted aggregate score favoring later life locations
+# 4. los = weighted aggregate score by length of stay in location
+# 5. prim_los = weighted favoring earlier and longer residences
+# 6. rec_los = weighted favoring later and longer residences
 
 # ggplot
 LHS_long |> 
@@ -116,6 +126,7 @@ LHS_long |>
               
               
   #recency weighting
+<<<<<<< HEAD
       lm_rec_weighted <- lm(DDk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weighted)
         summary(lm_rec_weighted)
           #Cross-Validation
@@ -129,6 +140,27 @@ LHS_long |>
               cvr5<-cv.glm(LHS_weights, lm_reclos_weighted, K=5)
               cvr5$delta
               
+=======
+  lm_rec_weighted <- lm(DDk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weighted)
+    summary(lm_prim_weighted)
+
+# unweighted aggregates
+lm_agg_unweighted <- lm(
+  DDk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
+  data = LHS_weights
+)
+
+lm_prim_weighted <- lm(
+  DDk ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct, 
+  data = LHS_weights
+)
+
+lm_rec_weighted <- lm(
+  DDk ~ rec_av_income + rec_density + rec_sex_ratio + rec_life_expct, 
+  data = LHS_weights
+)
+
+>>>>>>> f4263ba6180ad3c66fa682692988875f25b8d909
 # Generalized Linear Analysis ---------------------------------------------
   #time-weighting
       glm_time_weighted <- glm(DDk~tw.in+tw.dens+tw.SR+tw.LE, data=LHS_wide, family=Gamma(link="log"))
