@@ -101,7 +101,12 @@ LHS_long |>
   hist(tw.LE)
 # Linear Analysis ---------------------------------------------------------
 
-#linear model, I think this is all we need
+  #unweighted
+    lm_agg_unweighted <- lm(DDk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, data = LHS_weights)
+      summary(lm_agg_unweighted)
+        #Cross-Validation
+          cvr<-cv.glm(LHS_weights, lm_agg_unweighted, K=5)
+          cvr$delta
   #time-weighting
       lm_time_weighted <- lm(DDk~tw.in+tw.dens+tw.SR+tw.LE, data=LHS_wide)
         summary(lm_time_weighted)
@@ -126,7 +131,6 @@ LHS_long |>
               
               
   #recency weighting
-<<<<<<< HEAD
       lm_rec_weighted <- lm(DDk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weighted)
         summary(lm_rec_weighted)
           #Cross-Validation
@@ -139,64 +143,50 @@ LHS_long |>
             #Cross-Validation
               cvr5<-cv.glm(LHS_weights, lm_reclos_weighted, K=5)
               cvr5$delta
-              
-=======
-  lm_rec_weighted <- lm(DDk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weighted)
-    summary(lm_prim_weighted)
 
-# unweighted aggregates
-lm_agg_unweighted <- lm(
-  DDk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
-  data = LHS_weights
-)
-
-lm_prim_weighted <- lm(
-  DDk ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct, 
-  data = LHS_weights
-)
-
-lm_rec_weighted <- lm(
-  DDk ~ rec_av_income + rec_density + rec_sex_ratio + rec_life_expct, 
-  data = LHS_weights
-)
-
->>>>>>> f4263ba6180ad3c66fa682692988875f25b8d909
 # Generalized Linear Analysis ---------------------------------------------
+              
+  #unweighted
+      glm_agg_unweighted <- lm(DDk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, data = LHS_weights, family=Gamma(link="log"))
+        summary(glm_agg_unweighted)
+          #Cross-Validation
+            cvr6<-cv.glm(LHS_weights, glm_agg_unweighted, K=5)
+            cvr6$delta
   #time-weighting
       glm_time_weighted <- glm(DDk~tw.in+tw.dens+tw.SR+tw.LE, data=LHS_wide, family=Gamma(link="log"))
         summary(glm_time_weighted)
           #Cross-Validation
-            cvr6<-cv.glm(LHS_weights, glm_time_weighted, K=5)
-            cvr6$delta
+            cvr7<-cv.glm(LHS_weights, glm_time_weighted, K=5)
+            cvr7$delta
             
             
   #primacy weighting
       glm_prim_weighted <- lm(DDk~prim_av_income+prim_density+prim_sex_ratio+prim_life_expct, data=LHS_weighted, family=Gamma(link="log"))
         summary(lm_prim_weighted)
           #Cross-Validation
-            cvr7<-cv.glm(LHS_weights, glm_prim_weighted, K=5)
-            cvr7$delta
+            cvr8<-cv.glm(LHS_weights, glm_prim_weighted, K=5)
+            cvr8$delta
             
       #with time
         glm_primlos_weighted <- lm(DDk~prim_los_av_income+prim_los_density+prim_los_sex_ratio+prim_los_life_expct, data=LHS_weighted, family=Gamma(link="log"))
           summary(lm_primlos_weighted)
             #Cross-Validation
-              cvr8<-cv.glm(LHS_weights, glm_primlos_weighted, K=5)
-              cvr8$delta
+              cvr9<-cv.glm(LHS_weights, glm_primlos_weighted, K=5)
+              cvr9$delta
               
               
   #recency weighting
       glm_rec_weighted <- lm(DDk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weighted, family=Gamma(link="log"))
         summary(lm_rec_weighted)
           #Cross-Validation
-            cvr9<-cv.glm(LHS_weights, glm_rec_weighted, K=5)
-            cvr9$delta
+            cvr10<-cv.glm(LHS_weights, glm_rec_weighted, K=5)
+            cvr10$delta
             
       #With time
         glm_rec_weighted <- lm(DDk~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct, family=Gamma(link="log"))
           summary(lm_reclos_weighted)
             #Cross-Validation
-              cvr10<-cv.glm(LHS_weights, glm_reclos_weighted, K=5)
-              cvr10$delta
+              cvr11<-cv.glm(LHS_weights, glm_reclos_weighted, K=5)
+              cvr11$delta
 
            
