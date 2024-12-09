@@ -56,7 +56,11 @@ library(cv) # cross validation
 library(lme4) # glm
 library(MASS)
 library(performance) # assumption checks
+<<<<<<< HEAD
 library(emmeans)
+=======
+library(patchwork)
+>>>>>>> fc22ce764321b165e095cfce4bb91504aff204a9
 
 # load and view data ------------------------------------------------------
 
@@ -82,14 +86,14 @@ attach(LHS_weights)
 
 # visualize
 LHS_weights |> 
-  ggplot(aes(x = log(los_density), y = log(d_dk))) +
-  geom_point() +
+  ggplot(aes(x = prim_life_expct, y = log(d_dk))) +
+  geom_jitter() +
   geom_smooth(method = "lm", se = F) +
   theme(legend.position = "none")
 
-# hist
-LHS_long |> 
-  ggplot(aes(x = averagein)) +
+# check distrib of outcome or predictors
+LHS_weights |> 
+  ggplot(aes(x = sqrt(prim_density))) +
   geom_density()
 
 
@@ -98,6 +102,27 @@ LHS_long |>
   str(LHS_long) # variable types
   summary(LHS_long)
   
+
+# theme set ---------------------------------------------------------------
+
+# color palette
+clrs <- NatParksPalettes::natparks.pals("Cuyahoga")
+  
+our_theme <- function() {
+  theme_bw() + 
+    theme(
+      panel.grid = element_blank(),
+      plot.background = element_rect(fill = "white", color = NA), 
+      plot.title = element_text(face = "bold"), 
+      strip.text = element_text(face = "bold"), 
+      strip.background = element_rect(fill = "grey80", color = NA), 
+      legend.position = "none",
+      panel.border = element_blank(),
+      axis.line.x = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+      axis.line.y = element_line(linewidth = 0.5, linetype = "solid", colour = "black")
+    ) 
+}
+
 # Variables Checks-------------------------------------------------------
 #new variables
   hist(tw.in)
@@ -113,8 +138,8 @@ LHS_long |>
 
 # general function for bootstrapping regression parameters
 # 1. pass in model type, either "lm" or "glm" (for Gamma(link = "log"))
-# 2. pass in vector of names of parameters you want to include in model (
-# additive, no interactions)
+# 2. pass in model formula y ~ x1 + x2
+# boot will fill the other two to subset the data
 boot_param <- function(modeltype, formula, d, indices) {
   # take subset of the data
   data <- d[indices, ]
@@ -137,23 +162,92 @@ boot_param <- function(modeltype, formula, d, indices) {
   }
 }
   
+# view parameter bootstrapped distributions with 95% CI
+plot_param_dist <- function(boot_out, par_num, par_name) {
+  # get ci
+  ci <- boot.ci(boot_out, type = "bca", index = par_num)
+  
+  cis <- c(ci[[4]][4], ci[[4]][5])
+  
+  # calc density for bootstrapped weights
+  dens <- density(boot_out$t[, par_num])
+  
+  plot_boot <- tibble(x = dens$x, y = dens$y) |> 
+    mutate(
+      variable = case_when(
+        (x < cis[1] | x > cis[2]) ~ "On",
+        (x >= cis[1] & x <= cis[2]) ~ "Off",
+        TRUE ~ NA_character_
+      )
+    )
+  
+  p <- plot_boot |> 
+    ggplot(aes(x, y)) +
+    
+    # define areas
+    geom_area(
+      data = filter(plot_boot, variable == 'On'), fill = clrs[2]
+    ) +
+    geom_area(
+      data = filter(plot_boot, variable == 'Off'), fill = clrs[3]
+    ) +
+    
+    # add line for zero
+    geom_vline(
+      aes(xintercept = 0), linetype = "dashed", linewidth = 1.25,
+      color = clrs[2]
+    ) +
+    
+    labs(title = par_name) +
+    our_theme()
+  
+  return(p)
+}
+  
 # Linear Analysis ---------------------------------------------------------
 
+<<<<<<< HEAD
+  #unweighted, log transform outcome and two skewed predictors
+  lm_agg_unweighted <- lm(
+    d_dk ~ log(mean_av_income) + log(mean_density) + mean_sex_ratio + mean_life_expct, 
+    data = LHS_weights
+  )
+  summary(lm_agg_unweighted)
+=======
   #unweighted
   lm_agg_unweighted <- lm(d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
     data = LHS_weights)
       summary(lm_agg_unweighted)
+>>>>>>> 1bcb2c70f5db9d2db8cea1db16c107400d735b9a
+  
+  check_model(lm_agg_unweighted)
   
   # bootstrap regression weights
+<<<<<<< HEAD
+  unweighted_boot <- boot(
+    LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
+    formula = d_dk ~ log(mean_av_income) + log(mean_density) + mean_sex_ratio + mean_life_expct
+  )
+=======
   unweighted_boot <- boot(LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
     formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct)
+>>>>>>> 1bcb2c70f5db9d2db8cea1db16c107400d735b9a
   
   # boot seems to suggest that effects of sex ratio and le are significant in 
   # opposition to the model summary (index 4 and 5)
   quantile(unweighted_boot$t[,5], probs = c(.025, .975))
   
+  # set param names for plotting
+  par <- c("intercept", "mean average income", "mean density", "mean sex ratio", "mean life expectancy")
+  
   # view hist of bootstrapped values
-  hist(unweighted_boot$t[, 5])
+  int <- plot_param_dist(unweighted_boot, 1, "Intercept")
+  income <- plot_param_dist(unweighted_boot, 2, "Mean Income")
+  density <- plot_param_dist(unweighted_boot, 3, "Density")
+  sr <- plot_param_dist(unweighted_boot, 4, "Sex Ratio")
+  le <- plot_param_dist(unweighted_boot, 5, "Life Expectancy")
+  
+  (int + income + density) + sr + le
   
   #time-weighting
   lm_time_weighted <- lm(DDk ~ tw.in + tw.dens + tw.SR + tw.LE, data=LHS_wide)
