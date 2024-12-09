@@ -139,17 +139,13 @@ boot_param <- function(modeltype, formula, d, indices) {
 # Linear Analysis ---------------------------------------------------------
 
   #unweighted
-  lm_agg_unweighted <- lm(
-    d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
-    data = LHS_weights
-  )
-  summary(lm_agg_unweighted)
+  lm_agg_unweighted <- lm(d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
+    data = LHS_weights)
+      summary(lm_agg_unweighted)
   
   # bootstrap regression weights
-  unweighted_boot <- boot(
-    LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
-    formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct
-  )
+  unweighted_boot <- boot(LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
+    formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct)
   
   # boot seems to suggest that effects of sex ratio and le are significant in 
   # opposition to the model summary (index 4 and 5)
@@ -162,95 +158,88 @@ boot_param <- function(modeltype, formula, d, indices) {
   cv(lm_agg_unweighted, seed = our_seed)
   
   #time-weighting
-  lm_time_weighted <- lm(
-    DDk ~ tw.in + tw.dens + tw.SR + tw.LE, 
-    data=LHS_wide
-  )
+  lm_time_weighted <- lm(DDk ~ tw.in + tw.dens + tw.SR + tw.LE, data=LHS_wide)
   summary(lm_time_weighted)
-          #Cross-Validation
-            cvr1<-cv.glm(LHS_weights, lm_time_weighted, K=5)
-            cvr1$delta
-            
+    # bootstrap regression weights
+      timeweighted_boot <- boot(LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
+      formula = d_dk ~ tw_in + tw_dens + tw_sr + tw_le)
+    # view bootstrapped values
+      quantile(timeweighted_boot$t[,5], probs = c(.025, .975))
+      hist(timeweighted_boot$t[, 5])
     
   #primacy weighting
-  lm_prim_weighted <- lm(
-    d_dk ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct, 
-    data = LHS_weights
-  )
-  summary(lm_prim_weighted)
-          #Cross-Validation
-            cvr2<-cv(LHS_weights, lm_prim_weighted, K=5)
-            cvr2$delta
+  lm_prim_weighted <- lm(d_dk ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct, 
+    data = LHS_weights)
+      summary(lm_prim_weighted)
             
   #with time
-    lm_primlos_weighted <- lm(
-      d_dk ~ prim_los_av_income + prim_los_density + prim_los_sex_ratio + prim_los_life_expct, 
-      data = LHS_weights
-    )
-  summary(lm_primlos_weighted)
-            #Cross-Validation
-              cvr3<-cv.glm(LHS_weights, lm_primelos_weighted, K=5)
-              cvr3$delta
-              
+    lm_primlos_weighted <- lm(d_dk ~ prim_los_av_income + prim_los_density + prim_los_sex_ratio + prim_los_life_expct, 
+      data = LHS_weights)
+        summary(lm_primlos_weighted)
               
   #recency weighting
-      lm_rec_weighted <- lm(DDk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weighted)
+      lm_rec_weighted <- lm(d_dk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weights)
         summary(lm_rec_weighted)
-          #Cross-Validation
-            cvr4<-cv.glm(LHS_weights, lm_rec_weighted, K=5)
-            cvr4$delta
             
       #with time
-        lm_reclos_weighted <- lm(DDk~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct, data=LHS_weighted)
+        lm_reclos_weighted <- lm(d_dk~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct, data=LHS_weights)
           summary(lm_reclos_weighted)
-            #Cross-Validation
-              cvr5<-cv.glm(LHS_weights, lm_reclos_weighted, K=5)
-              cvr5$delta
 
 
 # Generalized Linear Analysis ---------------------------------------------
               
   #unweighted
-      glm_agg_unweighted <- lm(DDk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, data = LHS_weights, family=Gamma(link="log"))
+      glm_agg_unweighted <- glm(d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, data = LHS_weights, family=Gamma(link="log"))
         summary(glm_agg_unweighted)
-          #Cross-Validation
-            cvr6<-cv.glm(LHS_weights, glm_agg_unweighted, K=5)
-            cvr6$delta
+
   #time-weighting
-      glm_time_weighted <- glm(DDk~tw.in+tw.dens+tw.SR+tw.LE, data=LHS_wide, family=Gamma(link="log"))
+      glm_time_weighted <- glm(d_dk~tw_in+tw_dens+tw_sr+tw_le, data=LHS_weights, family=Gamma(link="log"))
         summary(glm_time_weighted)
-          #Cross-Validation
-            cvr7<-cv.glm(LHS_weights, glm_time_weighted, K=5)
-            cvr7$delta
             
-            
+    
   #primacy weighting
-      glm_prim_weighted <- lm(DDk~prim_av_income+prim_density+prim_sex_ratio+prim_life_expct, data=LHS_weighted, family=Gamma(link="log"))
+      glm_prim_weighted <- glm(d_dk~prim_av_income+prim_density+prim_sex_ratio+prim_life_expct, data=LHS_weights, family=Gamma(link="log"))
         summary(lm_prim_weighted)
-          #Cross-Validation
-            cvr8<-cv.glm(LHS_weights, glm_prim_weighted, K=5)
-            cvr8$delta
             
       #with time
-        glm_primlos_weighted <- lm(DDk~prim_los_av_income+prim_los_density+prim_los_sex_ratio+prim_los_life_expct, data=LHS_weighted, family=Gamma(link="log"))
+        glm_primlos_weighted <- glm(d_dk~prim_los_av_income+prim_los_density+prim_los_sex_ratio+prim_los_life_expct, data=LHS_weights, family=Gamma(link="log"))
           summary(lm_primlos_weighted)
-            #Cross-Validation
-              cvr9<-cv.glm(LHS_weights, glm_primlos_weighted, K=5)
-              cvr9$delta
-              
               
   #recency weighting
-      glm_rec_weighted <- lm(DDk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weighted, family=Gamma(link="log"))
+      glm_rec_weighted <- glm(d_dk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weights, family=Gamma(link="log"))
         summary(lm_rec_weighted)
-          #Cross-Validation
-            cvr10<-cv.glm(LHS_weights, glm_rec_weighted, K=5)
-            cvr10$delta
-            
+          
       #With time
-        glm_rec_weighted <- lm(DDk~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct, family=Gamma(link="log"))
-          summary(lm_reclos_weighted)
-            #Cross-Validation
-              cvr11<-cv.glm(LHS_weights, glm_reclos_weighted, K=5)
-              cvr11$delta
+        glm_reclos_weighted <- glm(d_dk~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct, data=LHS_weights, family=Gamma(link="log"))
+          summary(glm_reclos_weighted)
 
-           
+
+# Model Comparisons -------------------------------------------------------
+  summary(lm_agg_unweighted)
+  summary(lm_time_weighted)
+  summary(lm_prim_weighted)
+  summary(lm_primlos_weighted)
+  summary(lm_rec_weighted)
+  summary(lm_reclos_weighted)
+  
+  summary(glm_agg_unweighted)
+  summary(glm_time_weighted)
+  summary(glm_prim_weighted)
+  summary(glm_primlos_weighted)
+  summary(glm_rec_weighted)
+  summary(glm_reclos_weighted)
+  
+  AIC(lm_agg_unweighted)
+  AIC(lm_time_weighted)
+  AIC(lm_prim_weighted)
+  AIC(lm_primlos_weighted)
+  AIC(lm_rec_weighted)
+  AIC(lm_reclos_weighted)
+  
+  AIC(glm_agg_unweighted)
+  AIC(glm_time_weighted)
+  AIC(glm_prim_weighted)
+  AIC(glm_primlos_weighted)
+  AIC(glm_rec_weighted)
+  AIC(glm_reclos_weighted)       
+              
