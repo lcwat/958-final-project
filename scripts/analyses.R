@@ -28,46 +28,8 @@
 ## we will use k-fold cross validation for the preferred model to ensure that
 ## the model validates well within the dataset 
 ##  a. report results of robustness
-
-
-
-# load libraries ----------------------------------------------------------
-
-library(tidyverse)
-library(readxl) # read xlsx files
-library(haven)
-library(lme4)
-library(MASS)
-
-# load and view data ------------------------------------------------------
-
-LHS_wide <- read_xlsx("data/Final Project Data_wide.xlsx")
-LHS_long <- read_xlsx("data/Final Project Data_long.xlsx")
-
-# adjusted predictors file (untransformed)
-LHS_weights <- read_csv("data/lin-weight-untransf-lhs-data.csv")
-attach(LHS_weights)
-
-# prefixes: 
-# 1. mean = unweighted aggregate score using simple mean
-# 2. prim = weighted aggregate score favoring earlier life locations
-# 3. rec = weighted aggregate score favoring later life locations
-# 4. los = weighted aggregate score by length of stay in location
-# 5. prim_los = weighted favoring earlier and longer residences
-# 6. rec_los = weighted favoring later and longer residences
-
-# ggplot
-LHS_long |> 
-  ggplot(aes(x = averagein, y = DDk, color = as.factor(ResponseId))) +
-  geom_point() +
-  geom_line() +
-  theme(legend.position = "none")
-
-LHS_long |> 
-  ggplot(aes(x = averagein)) +
-  geom_density()
-
-# NOTES FROM MIKE:
+##  
+##  # NOTES FROM MIKE:
 # mike suggests reducing each subjects location/life history data down to 
 # aggregate means for each predictor (income, density, sr, le), or if you want 
 # to include all of those locations, could find a way to weight each of the 
@@ -82,8 +44,52 @@ LHS_long |>
 # 
 # use cross-validation to see how the model fits (encouraged to do at least one of
 # cross validation or bootstrapping, one is fine)
-# 
-# 
+
+
+
+# load libraries ----------------------------------------------------------
+
+library(tidyverse)
+library(readxl) # read xlsx files
+library(boot) # cross validation and bootstrapping
+library(cv) # cross validation
+library(lme4) # glm
+library(MASS)
+library(performance) # assumption checks
+
+# load and view data ------------------------------------------------------
+
+## original files, uncomment to load in 
+# LHS_long <- read_xlsx("data/Final Project Data_long.xlsx")
+
+our_seed <- 958958
+
+set.seed(our_seed)
+
+# adjusted predictors file (untransformed)
+LHS_wide <- read_xlsx("data/Final Project Data_wide.xlsx")
+LHS_weights <- read_csv("data/lin-weight-untransf-lhs-data.csv")
+attach(LHS_weights)
+
+# prefixes: 
+# 1. mean = unweighted aggregate score using simple mean
+# 2. prim = weighted aggregate score favoring earlier life locations
+# 3. rec = weighted aggregate score favoring later life locations
+# 4. los = weighted aggregate score by length of stay in location
+# 5. prim_los = weighted favoring earlier and longer residences
+# 6. rec_los = weighted favoring later and longer residences
+
+# visualize
+LHS_weights |> 
+  ggplot(aes(x = log(los_density), y = log(d_dk))) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  theme(legend.position = "none")
+
+# hist
+LHS_long |> 
+  ggplot(aes(x = averagein)) +
+  geom_density()
 
 
 # take a look at variables with colnames, str, and summary
@@ -99,32 +105,89 @@ LHS_long |>
   hist(tw.dens)
   hist(tw.SR)
   hist(tw.LE)
+
+  
+
+# functions ---------------------------------------------------------------
+
+# general function for bootstrapping regression parameters
+# 1. pass in model type, either "lm" or "glm" (for Gamma(link = "log"))
+# 2. pass in vector of names of parameters you want to include in model (
+# additive, no interactions)
+boot_param <- function(modeltype, formula, d, indices) {
+  # take subset of the data
+  data <- d[indices, ]
+  
+  # which model command should be used?
+  if(modeltype == "lm") {
+    return(
+      coef(lm(formula, data = data))
+    )
+  } else if(modeltype == "glm"){
+    return(
+      coef(glm(
+        formula,
+        family = Gamma(link = "log"), # gamma error with log link
+        data = data
+      ))
+    )
+  } else {
+    stop("Hey buddy, specify model type within quotes")
+  }
+}
+  
 # Linear Analysis ---------------------------------------------------------
 
   #unweighted
-    lm_agg_unweighted <- lm(DDk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, data = LHS_weights)
-      summary(lm_agg_unweighted)
-        #Cross-Validation
-          cvr<-cv.glm(LHS_weights, lm_agg_unweighted, K=5)
-          cvr$delta
+  lm_agg_unweighted <- lm(
+    d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
+    data = LHS_weights
+  )
+  summary(lm_agg_unweighted)
+  
+  # bootstrap regression weights
+  unweighted_boot <- boot(
+    LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
+    formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct
+  )
+  
+  # boot seems to suggest that effects of sex ratio and le are significant in 
+  # opposition to the model summary (index 4 and 5)
+  quantile(unweighted_boot$t[,5], probs = c(.025, .975))
+  
+  # view hist of bootstrapped values
+  hist(unweighted_boot$t[, 5])
+  
+  # cross validation from cv package, defaults to k = 10 and gives mse
+  cv(lm_agg_unweighted, seed = our_seed)
+  
   #time-weighting
-      lm_time_weighted <- lm(DDk~tw.in+tw.dens+tw.SR+tw.LE, data=LHS_wide)
-        summary(lm_time_weighted)
+  lm_time_weighted <- lm(
+    DDk ~ tw.in + tw.dens + tw.SR + tw.LE, 
+    data=LHS_wide
+  )
+  summary(lm_time_weighted)
           #Cross-Validation
             cvr1<-cv.glm(LHS_weights, lm_time_weighted, K=5)
             cvr1$delta
             
     
   #primacy weighting
-      lm_prim_weighted <- lm(DDk~prim_av_income+prim_density+prim_sex_ratio+prim_life_expct, data=LHS_weighted)
-        summary(lm_prim_weighted)
+  lm_prim_weighted <- lm(
+    d_dk ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct, 
+    data = LHS_weights
+  )
+  summary(lm_prim_weighted)
           #Cross-Validation
-            cvr2<-cv.glm(LHS_weights, lm_prime_weighted, K=5)
+            cvr2<-cv(LHS_weights, lm_prim_weighted, K=5)
             cvr2$delta
             
-      #with time
-        lm_primlos_weighted <- lm(DDk~prim_los_av_income+prim_los_density+prim_los_sex_ratio+prim_los_life_expct, data=LHS_weighted)
-          summary(lm_primlos_weighted)
+  #with time
+    lm_primlos_weighted <- lm(
+      d_dk ~ prim_los_av_income + prim_los_density + prim_los_sex_ratio + prim_los_life_expct, 
+      data = LHS_weights
+    )
+  summary(lm_primlos_weighted)
             #Cross-Validation
               cvr3<-cv.glm(LHS_weights, lm_primelos_weighted, K=5)
               cvr3$delta
@@ -143,6 +206,7 @@ LHS_long |>
             #Cross-Validation
               cvr5<-cv.glm(LHS_weights, lm_reclos_weighted, K=5)
               cvr5$delta
+
 
 # Generalized Linear Analysis ---------------------------------------------
               
