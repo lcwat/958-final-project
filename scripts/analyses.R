@@ -56,6 +56,7 @@ library(cv) # cross validation
 library(lme4) # glm
 library(MASS)
 library(performance) # assumption checks
+library(emmeans)
 
 # load and view data ------------------------------------------------------
 
@@ -154,9 +155,6 @@ boot_param <- function(modeltype, formula, d, indices) {
   # view hist of bootstrapped values
   hist(unweighted_boot$t[, 5])
   
-  # cross validation from cv package, defaults to k = 10 and gives mse
-  cv(lm_agg_unweighted, seed = our_seed)
-  
   #time-weighting
   lm_time_weighted <- lm(DDk ~ tw.in + tw.dens + tw.SR + tw.LE, data=LHS_wide)
   summary(lm_time_weighted)
@@ -184,8 +182,12 @@ boot_param <- function(modeltype, formula, d, indices) {
       #with time
         lm_reclos_weighted <- lm(d_dk~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct, data=LHS_weights)
           summary(lm_reclos_weighted)
+          check_model(lm_reclos_weighted)
+          
+          lm_reclos_weighted_simple <- lm(d_dk~rec_los_av_income, data=LHS_weights)
+          summary(lm_reclos_weighted_simple)
 
-
+library(performance)
 # Generalized Linear Analysis ---------------------------------------------
               
   #unweighted
@@ -242,4 +244,36 @@ boot_param <- function(modeltype, formula, d, indices) {
   AIC(glm_primlos_weighted)
   AIC(glm_rec_weighted)
   AIC(glm_reclos_weighted)       
-              
+
+  cv(lm_agg_unweighted, seed = our_seed)
+  cv(lm_time_weighted, seed = our_seed)
+  cv(lm_prim_weighted, seed = our_seed)
+  cv(lm_primlos_weighted, seed = our_seed)
+  cv(lm_rec_weighted, seed = our_seed)
+  cv(lm_reclos_weighted, seed = our_seed)
+  
+  cv(glm_agg_unweighted, seed = our_seed)
+  cv(glm_time_weighted, seed = our_seed)
+  cv(glm_prim_weighted, seed = our_seed)
+  cv(glm_primlos_weighted, seed = our_seed)
+  cv(glm_rec_weighted, seed = our_seed)
+  cv(glm_reclos_weighted, seed = our_seed) 
+  
+
+# Plots -------------------------------------------------------------------
+  lmreclosplot = data.frame(emmeans(lm_reclos_weighted, ~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct,
+                             at=list(rec_los_av_income=seq(0, 500000, by = 5000))))
+ 
+  ggplot(lmreclosplot, aes(y=exp(emmean)-1, x=rec_los_av_income)) + geom_line() + 
+    geom_point(data = LHS_weights, aes(x = rec_los_av_income, y = d_dk))+
+    geom_ribbon(aes(ymin=exp(emmean-SE)-1, ymax=exp(emmean+SE)-1),col=NA, alpha=.3) + theme_bw()
+  
+  
+  
+  glmreclosplot = data.frame(emmeans(glm_reclos_weighted, ~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct,
+                                  at=list(rec_los_av_income=seq(0, 500000, by = 5000))))
+  
+  ggplot(glmreclosplot, aes(y=exp(emmean), x=rec_los_av_income)) + geom_line() + 
+    geom_point(data = LHS_weights, aes(x = rec_los_av_income, y = d_dk))+
+    geom_ribbon(aes(ymin=exp(emmean-SE), ymax=exp(emmean+SE)),col=NA, alpha=.3) + theme_bw()
+  
