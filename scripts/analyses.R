@@ -50,6 +50,7 @@
 # load libraries ----------------------------------------------------------
 
 library(tidyverse)
+library(showtext) # font import and graphics output
 library(readxl) # read xlsx files
 library(boot) # cross validation and bootstrapping
 library(cv) # cross validation
@@ -57,6 +58,7 @@ library(lme4) # glm
 library(MASS)
 library(performance) # assumption checks
 library(patchwork)
+library(emmeans)
 
 # load and view data ------------------------------------------------------
 
@@ -104,18 +106,32 @@ LHS_weights |>
 # color palette
 clrs <- NatParksPalettes::natparks.pals("Cuyahoga")
   
+  # add font from google
+  font_add_google("Ledger")
+  font_add_google("Comfortaa")
+  
+  # ensure font is displayed in plot viewer
+  showtext_auto()
+  
+  # ensure showtext renders to ggsave, will make text look huge in viewer!
+  showtext_opts(dpi = 300)
+  
 our_theme <- function() {
   theme_bw() + 
     theme(
+      title = element_text(family = "Ledger", color = "gray95"),
       panel.grid = element_blank(),
-      plot.background = element_rect(fill = "white", color = NA), 
+      plot.background = element_rect(fill = "black", color = NA),
+      panel.background = element_rect(fill = "black", color = NA),
       plot.title = element_text(face = "bold"), 
       strip.text = element_text(face = "bold"), 
       strip.background = element_rect(fill = "grey80", color = NA), 
       legend.position = "none",
       panel.border = element_blank(),
-      axis.line.x = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
-      axis.line.y = element_line(linewidth = 0.5, linetype = "solid", colour = "black")
+      axis.text = element_text(family = "Comfortaa", color = "gray85"),
+      axis.line.x = element_line(linewidth = 0.5, linetype = "solid", colour = "gray90"),
+      axis.line.y = element_line(linewidth = 0.5, linetype = "solid", colour = "gray90"), 
+      axis.ticks = element_line(linewidth = .35, linetype = "solid", color = "gray85")
     ) 
 }
 
@@ -150,6 +166,7 @@ boot_param <- function(modeltype, formula, d, indices) {
       coef(glm(
         formula,
         family = Gamma(link = "log"), # gamma error with log link
+        method = 
         data = data
       ))
     )
@@ -215,10 +232,6 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
   check_model(lm_agg_unweighted)
   
   # bootstrap regression weights
-  unweighted_boot <- boot(
-    LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
-    formula = d_dk ~ log(mean_av_income) + log(mean_density) + mean_sex_ratio + mean_life_expct
-  )
   unweighted_boot <- boot(LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
     formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct)
   
@@ -275,6 +288,25 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
   #unweighted
       glm_agg_unweighted <- glm(d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, data = LHS_weights, family=Gamma(link="log"))
         summary(glm_agg_unweighted)
+  
+        # remove NaN
+        LHS_weights <- LHS_weights |> 
+          filter(!is.na(mean_av_income) & !is.na(mean_density) & !is.na(mean_sex_ratio) & !is.na(mean_life_expct))
+        
+        # bootstrap regression weights, most samples I can get is 250
+        unweighted_glm_boot <- boot(
+          LHS_weights, statistic = boot_param, R = 250, modeltype = "glm",
+          formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct
+        )
+        
+        # view hist of bootstrapped values
+        int <- plot_param_dist(unweighted_glm_boot, 1, "Intercept")
+        income <- plot_param_dist(unweighted_glm_boot, 2, "Mean Income")
+        density <- plot_param_dist(unweighted_glm_boot, 3, "Density")
+        sr <- plot_param_dist(unweighted_glm_boot, 4, "Sex Ratio")
+        le <- plot_param_dist(unweighted_glm_boot, 5, "Life Expectancy")
+        
+        (int + income + density) + sr + le
 
   #time-weighting
       glm_time_weighted <- glm(d_dk~tw_in+tw_dens+tw_sr+tw_le, data=LHS_weights, family=Gamma(link="log"))
