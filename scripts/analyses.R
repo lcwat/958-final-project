@@ -53,6 +53,7 @@ library(tidyverse)
 library(showtext) # font import and graphics output
 library(readxl) # read xlsx files
 library(boot) # cross validation and bootstrapping
+library(glm2)
 library(cv) # cross validation
 library(lme4) # glm
 library(MASS)
@@ -60,6 +61,7 @@ library(performance) # assumption checks
 library(patchwork)
 library(emmeans)
 library(broom)
+library(qpcR) # akaike weights
 
 # load and view data ------------------------------------------------------
 
@@ -117,23 +119,39 @@ clrs <- NatParksPalettes::natparks.pals("Cuyahoga")
   # ensure showtext renders to ggsave, will make text look huge in viewer!
   showtext_opts(dpi = 300)
   
-our_theme <- function() {
-  theme_bw() + 
-    theme(
-      title = element_text(family = "Ledger", color = "gray95"),
-      panel.grid = element_blank(),
-      plot.background = element_rect(fill = "black", color = NA),
-      panel.background = element_rect(fill = "black", color = NA),
-      plot.title = element_text(face = "bold"), 
-      strip.text = element_text(face = "bold"), 
-      strip.background = element_rect(fill = "grey80", color = NA), 
-      legend.position = "none",
-      panel.border = element_blank(),
-      axis.text = element_text(family = "Comfortaa", color = "gray85"),
-      axis.line.x = element_line(linewidth = 0.5, linetype = "solid", colour = "gray90"),
-      axis.line.y = element_line(linewidth = 0.5, linetype = "solid", colour = "gray90"), 
-      axis.ticks = element_line(linewidth = .35, linetype = "solid", color = "gray85")
-    ) 
+our_theme <- function(option = "bw") {
+  if(option == "bw") {
+    theme_bw() + 
+      theme(
+        title = element_text(family = "Ledger", color = "gray95"),
+        panel.grid = element_blank(),
+        plot.background = element_rect(fill = "black", color = NA),
+        panel.background = element_rect(fill = "black", color = NA),
+        plot.title = element_text(face = "bold"), 
+        strip.text = element_text(face = "bold"), 
+        strip.background = element_rect(fill = "grey80", color = NA), 
+        legend.position = "none",
+        panel.border = element_blank(),
+        axis.text = element_text(family = "Comfortaa", color = "gray85"),
+        axis.line.x = element_line(linewidth = 0.5, linetype = "solid", colour = "gray90"),
+        axis.line.y = element_line(linewidth = 0.5, linetype = "solid", colour = "gray90"), 
+        axis.ticks = element_line(linewidth = .35, linetype = "solid", color = "gray85")
+      ) 
+  } else if (option == "void") {
+    theme_void() +
+      theme(
+        title = element_text(family = "Ledger", color = "gray95"),
+        panel.grid = element_blank(),
+        plot.background = element_rect(fill = "black", color = NA),
+        panel.background = element_rect(fill = "black", color = NA),
+        panel.border = element_blank(),
+        plot.title = element_text(face = "bold"), 
+        strip.text = element_text(face = "bold"), 
+        strip.background = element_rect(fill = "grey80", color = NA),
+        legend.text = element_text(family = "Comfortaa", color = "gray90"),
+        legend.background = element_rect(fill = "black")
+      )
+  }
 }
 
 # functions ---------------------------------------------------------------
@@ -153,10 +171,9 @@ boot_param <- function(modeltype, formula, d, indices) {
     )
   } else if(modeltype == "glm"){
     return(
-      coef(glm(
+      coef(glm2(
         formula,
         family = Gamma(link = "log"), # gamma error with log link
-        method = 
         data = data
       ))
     )
@@ -169,6 +186,7 @@ boot_param <- function(modeltype, formula, d, indices) {
 plot_param_dist <- function(boot_out, par_num, par_name) {
   # get ci
   ci <- boot.ci(boot_out, type = "bca", index = par_num)
+
   
   cis <- c(ci[[4]][4], ci[[4]][5])
   
@@ -197,7 +215,7 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
     
     # add line for zero
     geom_vline(
-      aes(xintercept = 0), linetype = "dashed", linewidth = 1.25,
+      aes(xintercept = 0), linetype = "dotted", linewidth = 1.25,
       color = clrs[2]
     ) +
     
@@ -210,10 +228,11 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
 # Linear Analysis ---------------------------------------------------------
   #unweighted, log transform outcome and two skewed predictors
   lm_agg_unweighted <- lm(
-    d_dk ~ log(mean_av_income) + log(mean_density) + mean_sex_ratio + mean_life_expct, 
+    d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
     data = LHS_weights
   )
   summary(lm_agg_unweighted)
+  tidy(lm_agg_unweighted)
   #unweighted
   lm_agg_unweighted <- lm(d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
     data = LHS_weights)
@@ -222,16 +241,11 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
   check_model(lm_agg_unweighted)
   
   # bootstrap regression weights
-  unweighted_boot <- boot(LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
-    formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct)
-  
-  # boot seems to suggest that effects of sex ratio and le are significant in 
-  # opposition to the model summary (index 4 and 5)
-  quantile(unweighted_boot$t[,5], probs = c(.025, .975))
-  
-  # set param names for plotting
-  par <- c("intercept", "mean average income", "mean density", "mean sex ratio", "mean life expectancy")
-  
+  unweighted_boot <- boot(
+    LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
+    formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct
+  )
+
   # view hist of bootstrapped values
   int <- plot_param_dist(unweighted_boot, 1, "Intercept")
   income <- plot_param_dist(unweighted_boot, 2, "Mean Income")
@@ -239,58 +253,332 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
   sr <- plot_param_dist(unweighted_boot, 4, "Sex Ratio")
   le <- plot_param_dist(unweighted_boot, 5, "Life Expectancy")
   
-  (int + income + density) + sr + le
+  p <- (int + income + density) + sr + le + 
+    plot_annotation(theme = theme(plot.background = element_rect(fill = "black", color = NA)))
   
-  # cross validation from cv package, defaults to k = 10 and gives mse
-  cv(lm_agg_unweighted, seed = our_seed)
+  ggsave(
+    plot = p, "plots/boot-lm-coef-unweighted.png", device = "png", 
+    width = 10, height = 6, units = "in"
+  )
+  
+  # boot seems to suggest effect of sex when orig model does not, wary of this
+  # result given many assumptions are being violated like linearity, normality
+  # of residuals, homogeneity of variance
+  
+
+# plot model results ------------------------------------------------------
+
+  # plot me of sex ratio
+  density_toplot_lm <- as_tibble(
+    emmeans(
+    lm_agg_unweighted, 
+    ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
+    at = list(mean_density = seq(0, 41000, 500))
+    )
+  )
+  
+  LHS_weights |> 
+    ggplot() +
+    
+    # plot orig data
+    geom_jitter(
+      aes(x = mean_density, y = d_dk), alpha = .8, color = clrs[3]
+    ) +
+    
+    # plot fitted line
+    geom_line(
+      data = density_toplot_lm,
+      aes(x = mean_density, y = emmean), 
+      color = clrs[2], linewidth = 1.25
+    ) +
+    # error ribbons
+    geom_ribbon(
+      data = density_toplot_lm, 
+      aes(x = mean_density, ymin = lower.CL, ymax = upper.CL), 
+      alpha = .3, fill = clrs[2], color = NA
+    ) +
+    # horizontal line 
+    geom_hline(aes(yintercept = 0), alpha = .4, color = "grey90") +
+    
+    scale_y_continuous(limits = c(-.1, .3), n.breaks = 5) +
+    scale_x_continuous(n.breaks = 8) +
+    
+    labs(
+      x = "Mean Density", 
+      y = "Delay Discounting Score"
+    ) +
+    
+    our_theme()
+  
+  # save
+  ggsave(
+    "plots/lm-density-me.png", device = "png", 
+    width = 8, height = 6, units = "in"
+  )
+
+
+# weighted linear analysis -----------------------------------------------------
   
   #time-weighting
-  lm_time_weighted <- lm(DDk ~ tw.in + tw.dens + tw.SR + tw.LE, data=LHS_wide)
-    # bootstrap regression weights
-      timeweighted_boot <- boot(LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
-      formula = d_dk ~ tw_in + tw_dens + tw_sr + tw_le)
-    # view bootstrapped values
-      quantile(timeweighted_boot$t[,5], probs = c(.025, .975))
-      hist(timeweighted_boot$t[, 5])
-    
-  #primacy weighting
-  lm_prim_weighted <- lm(d_dk ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct, 
-    data = LHS_weights)
-            
-  #with time
-    lm_primlos_weighted <- lm(d_dk ~ prim_los_av_income + prim_los_density + prim_los_sex_ratio + prim_los_life_expct, 
-      data = LHS_weights)
-              
-  #recency weighting
-      lm_rec_weighted <- lm(d_dk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weights)
-            
-      #with time
-        lm_reclos_weighted <- lm(d_dk~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct, data=LHS_weights)
+  lm_los <- lm(
+    d_dk ~ los_av_income + los_density + los_sex_ratio + los_life_expct, 
+    data = LHS_wide
+  )
+  
+  tidy(lm_los)
+  
+  # bootstrap regression weights
+  los_boot <- boot(
+    LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
+    formula = d_dk ~ los_av_income + los_density + los_sex_ratio + los_life_expct
+  )
+  
+  # view hist of bootstrapped values
+  int <- plot_param_dist(los_boot, 1, "Intercept")
+  income <- plot_param_dist(los_boot, 2, "Mean Income")
+  density <- plot_param_dist(los_boot, 3, "Density")
+  sr <- plot_param_dist(los_boot, 4, "Sex Ratio")
+  le <- plot_param_dist(los_boot, 5, "Life Expectancy")
+  
+  p <- (int + income + density) + sr + le + 
+    plot_annotation(theme = theme(plot.background = element_rect(fill = "black", color = NA)))
+  
+  ggsave(
+    plot = p, "plots/boot-lm-coef-los.png", device = "png", 
+    width = 10, height = 6, units = "in"
+  )
 
+  # primacy weighting
+  lm_prim_weighted <- lm(
+    d_dk ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct, 
+    data = LHS_weights
+  )
+  
+  tidy(lm_prim_weighted)
+  
+  prim_boot <- boot(
+    LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
+    formula = d_dk ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct
+  )
+  
+  # view hist of bootstrapped values
+  int <- plot_param_dist(prim_boot, 1, "Intercept")
+  income <- plot_param_dist(prim_boot, 2, "Mean Income")
+  density <- plot_param_dist(prim_boot, 3, "Density")
+  sr <- plot_param_dist(prim_boot, 4, "Sex Ratio")
+  le <- plot_param_dist(prim_boot, 5, "Life Expectancy")
+  
+  p <- (int + income + density) + sr + le + 
+    plot_annotation(theme = theme(plot.background = element_rect(fill = "black", color = NA)))
+  
+  ggsave(
+    plot = p, "plots/boot-lm-coef-prim.png", device = "png", 
+    width = 10, height = 6, units = "in"
+  )
+  
+  # again, like unweighted model, suggests an effect of sex ratio when analysis
+  # likely a type I error from bootstrapping an inappropriate model
+  
+
+# plot me of sr -----------------------------------------------------------
+  
+  # plot me of sex ratio
+  toplot <- as_tibble(
+    emmeans(
+      lm_prim_weighted, 
+      ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct,
+      at = list(prim_sex_ratio = seq(20, 90, 1))
+    )
+  )
+  var <- prim_sex_ratio
+  name <- "Primacy Sex Ratio"
+  
+  LHS_weights |> 
+    ggplot() +
+    
+    # plot orig data
+    geom_jitter(
+      aes(x = var, y = d_dk), alpha = .8, color = clrs[3]
+    ) +
+    
+    # plot fitted line
+    geom_line(
+      data = toplot,
+      aes(x = prim_sex_ratio, y = emmean), 
+      color = clrs[2], linewidth = 1.25
+    ) +
+    # error ribbons
+    geom_ribbon(
+      data = toplot, 
+      aes(x = prim_sex_ratio, ymin = lower.CL, ymax = upper.CL), 
+      alpha = .3, fill = clrs[2], color = NA
+    ) +
+    # horizontal line 
+    geom_hline(aes(yintercept = 0), alpha = .4, color = "grey90") +
+    
+    scale_y_continuous(limits = c(-.1, .3), n.breaks = 5) +
+    scale_x_continuous(n.breaks = 8) +
+    
+    labs(
+      x = name, 
+      y = "Delay Discounting Score"
+    ) +
+    
+    our_theme()
+  
+  # save
+  ggsave(
+    "plots/prim-lm-sr-me.png", device = "png", 
+    width = 8, height = 6, units = "in"
+  )
+
+# -------------------------------------------------------------------------
+
+  # recency weighting
+  lm_rec_weighted <- lm(
+    d_dk ~ rec_av_income + rec_density + rec_sex_ratio + rec_life_expct, 
+    data = LHS_weights
+  )
+  
+  tidy(lm_rec_weighted)
+  # sex ratio is marginally significant, lets see what boot does
+  
+  rec_boot <- boot(
+    LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
+    formula = d_dk ~ rec_av_income + rec_density + rec_sex_ratio + rec_life_expct
+  )
+  
+  # view hist of bootstrapped values
+  int <- plot_param_dist(rec_boot, 1, "Intercept")
+  income <- plot_param_dist(rec_boot, 2, "Mean Income")
+  density <- plot_param_dist(rec_boot, 3, "Density")
+  sr <- plot_param_dist(rec_boot, 4, "Sex Ratio")
+  le <- plot_param_dist(rec_boot, 5, "Life Expectancy")
+  
+  p <- (int + income + density) + sr + le + 
+    plot_annotation(theme = theme(plot.background = element_rect(fill = "black", color = NA)))
+  
+  ggsave(
+    plot = p, "plots/boot-lm-coef-rec.png", device = "png", 
+    width = 10, height = 6, units = "in"
+  )
+  
+
+# plot me of sr -----------------------------------------------------------
+
+  # plot me of sex ratio
+  toplot <- as_tibble(
+    emmeans(
+      lm_rec_weighted, 
+      ~ rec_av_income + rec_density + rec_sex_ratio + rec_life_expct,
+      at = list(rec_sex_ratio = seq(20, 90, 1))
+    )
+  )
+  
+  LHS_weights |> 
+    ggplot() +
+    
+    # plot orig data
+    geom_jitter(
+      aes(x = rec_sex_ratio, y = d_dk), alpha = .8, color = clrs[3]
+    ) +
+    
+    # plot fitted line
+    geom_line(
+      data = toplot,
+      aes(x = rec_sex_ratio, y = emmean), 
+      color = clrs[2], linewidth = 1.25
+    ) +
+    # error ribbons
+    geom_ribbon(
+      data = toplot, 
+      aes(x = rec_sex_ratio, ymin = lower.CL, ymax = upper.CL), 
+      alpha = .3, fill = clrs[2], color = NA
+    ) +
+    # horizontal line 
+    geom_hline(aes(yintercept = 0), alpha = .4, color = "grey90") +
+    
+    scale_y_continuous(limits = c(-.1, .3), n.breaks = 5) +
+    scale_x_continuous(n.breaks = 8) +
+    
+    labs(
+      x = "Recency Sex Ratio", 
+      y = "Delay Discounting Score"
+    ) +
+    
+    our_theme()
+  
+  # save
+  ggsave(
+    "plots/rec-lm-sr-me.png", device = "png", 
+    width = 8, height = 6, units = "in"
+  )
+  
+  # does appear to be a stronger relationship, with the line dipping below 0, 
+  # not just the error
+  # maybe this represents a better variation in the more recent estimates of the
+  # sr, not as bunched up around 50 (default type of guess)
+  
+
+# model comparison --------------------------------------------------------
+aics <- AIC(lm_agg_unweighted, lm_los, lm_prim_weighted, lm_rec_weighted)
+# warning b/c not all models have the same number of observations!
+
+# code for aic weights
+akaike.weights(aics[,2])
+
+# $weights
+# unweighted, los, prim, rec
+# [1] 0.43091902 0.28327685 0.23596382 0.04984031
+# 43% likely that unweighted model is best among candidates
+  
+cv(lm_agg_unweighted, seed = our_seed) # cross-validation criterion (mse) = 0.00543554 
+cv(lm_los, seed = our_seed) # cross-validation criterion (mse) = 0.006279236
+cv(lm_prim_weighted, seed = our_seed) # cross-validation criterion (mse) = 0.006513087
+cv(lm_rec_weighted, seed = our_seed) # cross-validation criterion (mse) = 0.004661342
+
+# seems to suggest lowest error from recency weighted model, AIC may not be trust-
+# worthy, cv results could be more reliable due to missing data
+# looked back at the data, there is an odd participant who listed three locations
+# but only provide estimates for some categories like density for all three, but
+# for life expectancy, only have 2, which seems to mess with the weighting algor as
+# a weird edge case, but not sure why this would lead to different ans for each
+# weighting
 
 # Generalized Linear Analysis ---------------------------------------------
               
   #unweighted
-      glm_agg_unweighted <- glm(d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, data = LHS_weights, family=Gamma(link="log"))
+  glm_agg_unweighted <- glm2(
+    d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, 
+    data = LHS_weights, 
+    family = Gamma(link = "log")
+  )
+
+  tidy(glm_agg_unweighted)
+  # sex ratio effect emerges! others seem to come closer
   
-        # remove NaN
-        LHS_weights <- LHS_weights |> 
-          filter(!is.na(mean_av_income) & !is.na(mean_density) & !is.na(mean_sex_ratio) & !is.na(mean_life_expct))
-        
-        # bootstrap regression weights, most samples I can get is 250
-        unweighted_glm_boot <- boot(
-          LHS_weights, statistic = boot_param, R = 250, modeltype = "glm",
-          formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct
-        )
-        
-        # view hist of bootstrapped values
-        int <- plot_param_dist(unweighted_glm_boot, 1, "Intercept")
-        income <- plot_param_dist(unweighted_glm_boot, 2, "Mean Income")
-        density <- plot_param_dist(unweighted_glm_boot, 3, "Density")
-        sr <- plot_param_dist(unweighted_glm_boot, 4, "Sex Ratio")
-        le <- plot_param_dist(unweighted_glm_boot, 5, "Life Expectancy")
-        
-        (int + income + density) + sr + le
+  # bootstrap regression weights, most samples I can get is 250 on desktop
+  unweighted_glm_boot <- boot(
+    LHS_weights, statistic = boot_param, R = 2500, modeltype = "glm",
+    formula = d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct
+  )
+
+  # view hist of bootstrapped values
+  int <- plot_param_dist(unweighted_glm_boot, 1, "Intercept")
+  income <- plot_param_dist(unweighted_glm_boot, 2, "Mean Income")
+  density <- plot_param_dist(unweighted_glm_boot, 3, "Density")
+  sr <- plot_param_dist(unweighted_glm_boot, 4, "Sex Ratio")
+  le <- plot_param_dist(unweighted_glm_boot, 5, "Life Expectancy")
+  
+  p <- (int + income + density) + sr + le + 
+    plot_annotation(theme = theme(plot.background = element_rect(fill = "black", color = NA)))
+  
+  # a little more conservative, says sex ratio interval includes 0
+  
+  ggsave(
+    plot = p, "plots/boot-glm-coef-unweighted.png", device = "png", 
+    width = 10, height = 6, units = "in"
+  )
 
   #time-weighting
       glm_time_weighted <- glm(d_dk~tw_in+tw_dens+tw_sr+tw_le, data=LHS_weights, family=Gamma(link="log"))
