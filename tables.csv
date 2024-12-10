@@ -1,0 +1,8 @@
+Table x,,,,
+Parameter Estimates for Model x,,,,
+Variable,Parameter Estimate,Std. Error,t,p
+(Intercept),0.13,9.54E-02,1.36,.177
+Median Income,-2.19E-03,0.01,-0.30,.764
+Population Density,-3.82E-03,3.67E-03,-1.04,.302
+Sex Ratio,-1.34E-03,9.93E-04,-1.35,.180
+Life Expectancy,3.68E-04,5.21E-04,0.71,.482

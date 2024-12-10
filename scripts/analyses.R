@@ -59,6 +59,7 @@ library(MASS)
 library(performance) # assumption checks
 library(patchwork)
 library(emmeans)
+library(broom)
 
 # load and view data ------------------------------------------------------
 
@@ -134,17 +135,6 @@ our_theme <- function() {
       axis.ticks = element_line(linewidth = .35, linetype = "solid", color = "gray85")
     ) 
 }
-
-# Variables Checks-------------------------------------------------------
-#new variables
-  hist(tw.in)
-  hist(tw.hhin)
-  hist(tw.roommates)
-  hist(tw.dens)
-  hist(tw.SR)
-  hist(tw.LE)
-
-  
 
 # functions ---------------------------------------------------------------
 
@@ -360,14 +350,15 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
   cv(glm_rec_weighted, seed = our_seed)
   cv(glm_reclos_weighted, seed = our_seed) 
 
-  # Plots -------------------------------------------------------------------
+# Plots -------------------------------------------------------------------
   toplot = data.frame(emmeans(lm_agg_unweighted, ~mean_av_income+mean_density+mean_sex_ratio+mean_life_expct,
       at=list(mean_av_income=seq(0, 500000, by = 5000))))
   
   ggplot(toplot, aes(y=exp(emmean)-1, x=mean_av_income)) + geom_line() + 
     geom_point(data = LHS_weights, aes(x = mean_av_income, y = d_dk))+
-    geom_ribbon(aes(ymin=exp(emmean-SE)-1, ymax=exp(emmean+SE)-1),col=NA, alpha=.3) + theme_bw()
-  
+    geom_ribbon(aes(ymin=exp(emmean-SE)-1, ymax=exp(emmean+SE)-1),col=NA, alpha=.3) + theme_bw()+
+    xlab("Median Income") +ylab("Delay Discounting") +ggtitle("Unweighted Linear Prediction Model")
+  #wtf? why is this a log-line?
   
   toplot2 = data.frame(emmeans(glm_agg_unweighted, ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct,
     at=list(rec_los_av_income=seq(0, 500000, by = 5000))))
