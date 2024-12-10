@@ -204,7 +204,7 @@ weighted_vector <- function(
 }
 
 # test
-incomes <- c(60000, 70000, 150000, NA, NA)
+incomes <- c(60000, 70000, NA, 150000, NA)
 length_of_stay <- c(10, 10, 2, NA, NA)
 
 vect1 <- weighted_vector(incomes, length_of_stay, "recency")
@@ -413,7 +413,7 @@ linear_weighted_lhs_agg_data <- weighted_lhs_data |>
   dplyr::select(1:15, 61:90)
 
 # no transformations applied prior, but have option to do so with extra argument
-write_csv(linear_weighted_lhs_agg_data, "data/lin-weight-untransf-lhs-data.csv")
+write_csv(linear_weighted_lhs_agg_data, "data/new-weight-untransf-lhs-data.csv")
 
 
 # transform and weight ----------------------------------------------------

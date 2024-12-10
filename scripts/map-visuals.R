@@ -14,7 +14,7 @@ library(haven) # read sav
 library(tidycensus) # tidy us census data
 library(tigris) # county area for density
 library(sf) # plotting maps
-library(crsuggest) # suggest best cartographic set for dataset
+library(scales) # scales for plotting
 
 # load data ---------------------------------------------------------------
 
@@ -216,23 +216,7 @@ summary(pop_county$sex_ratio) # looks good
 
 # mapping locations -------------------------------------------------------
 
-# us map code
-# locations_to_include <- locations_all$r1_state_abb
-# 
-# plot_usmap(regions = "counties", data = locations_all, include = locations_to_include, values = "RiskTaking", color = "black") + 
-#   scale_fill_continuous(
-#     low = "green4", high = "green", 
-#     name = "Risk Taking"
-#   ) + 
-#   theme(legend.position = "right")
-# 
-# plot_usmap(data = countypov, regions = "counties", values = "pct_pov_2021", color = "blue") +
-#   scale_fill_continuous(
-#     low = "blue4", high = "orange", 
-#     name = "poverty percentage"
-#   )
-
-# plot sf
+# plot sf, get state geos
 states <- states()
 
 states <- states |> 
@@ -240,11 +224,6 @@ states <- states |>
 
 # rearrange geo to keep aleutian islands from expanding plot too much
 states <- shift_geometry(states)
-
-# suggest crs
-crsuggest::suggest_crs(plot_counties)
-
-# same as already using, NAD83
 
 # count number of obs from counties, some overrepresented in convenience sample data
 sum_locations <- plot_counties |> 
@@ -280,59 +259,47 @@ sum_locations |>
     begin = .5, end = 1
   ) +
   
-  theme_void()
+  our_theme("void")
 
-# trying to make function to streamline map creation, but not working yet
-plot_ave_county_data <- function(
-    sf_df, states_sf_df, variable, variable_name = "My Variable",
-    scale_fill_option = "magma",
-    scale_begin = .5, scale_end = 1
-  ) {
-  # group by county and calc. ave. for that variable to represent whole county
-  to_plot <- sf_df |> 
-    group_by(location) |> 
-    summarise(
-      ave_var_over_county = mean(variable, na.rm = T)
-    )
-  
-  # now plot it
-  to_plot |> 
-    ggplot() +
-    
-    geom_sf(
-      aes(fill = ave_var_over_county), 
-      color = NA
-    ) + 
-    
-    geom_sf(
-      data = states_sf_df, 
-      fill = NA, color = "grey95"
-    ) +
-    
-    # fill the counties with data
-    scale_fill_viridis_c(
-      variable_name,
-      option = scale_fill_option, na.value = "black",
-      begin = scale_begin, end = scale_end
-    ) +
-    
-    theme_void()
-}
+# save
+ggsave(
+  "plots/map-subj-count.png", device = "png", 
+  width = 12, height = 10, units = "in"
+)
 
+# plot different variables to see if location impacts variation visually
 toplot <- plot_counties |> 
   group_by(location) |> 
   summarize(
-    mean_ddk = mean(DDk, na.rm = T)
+    mean_le = mean(LE, na.rm = T)
   )
 
-plot_ave_county_data(
-  plot_counties, states, 
-  variable = DDk, variable_name = "Delay Discounting Score",
-  scale_fill_option = "magma"
-)
+# now plot it
+toplot |> 
+  ggplot() +
+  
+  geom_sf(
+    aes(fill = mean_le), 
+    color = NA
+  ) + 
+  
+  geom_sf(
+    data = states, 
+    fill = NA, color = "grey95"
+  ) +
+  
+  # fill the counties with data
+  scale_fill_viridis_c(
+    "Average Life Expectancy",
+    option = "magma", na.value = "black",
+    begin = .5, end = 1
+  ) +
+  
+  our_theme("void")
 
+# save it
 ggsave(
-  "plots/subj-by-county.png", device = "png",
+  "plots/map-agg-binned-life-expct.png", device = "png",
   width = 12, height = 10, units = "in"
 )
   
