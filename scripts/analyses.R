@@ -256,7 +256,6 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
   
   #time-weighting
   lm_time_weighted <- lm(DDk ~ tw.in + tw.dens + tw.SR + tw.LE, data=LHS_wide)
-  summary(lm_time_weighted)
     # bootstrap regression weights
       timeweighted_boot <- boot(LHS_weights, statistic = boot_param, R = 2500, modeltype = "lm",
       formula = d_dk ~ tw_in + tw_dens + tw_sr + tw_le)
@@ -267,27 +266,22 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
   #primacy weighting
   lm_prim_weighted <- lm(d_dk ~ prim_av_income + prim_density + prim_sex_ratio + prim_life_expct, 
     data = LHS_weights)
-      summary(lm_prim_weighted)
             
   #with time
     lm_primlos_weighted <- lm(d_dk ~ prim_los_av_income + prim_los_density + prim_los_sex_ratio + prim_los_life_expct, 
       data = LHS_weights)
-        summary(lm_primlos_weighted)
               
   #recency weighting
       lm_rec_weighted <- lm(d_dk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weights)
-        summary(lm_rec_weighted)
             
       #with time
         lm_reclos_weighted <- lm(d_dk~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct, data=LHS_weights)
-          summary(lm_reclos_weighted)
 
 
 # Generalized Linear Analysis ---------------------------------------------
               
   #unweighted
       glm_agg_unweighted <- glm(d_dk ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct, data = LHS_weights, family=Gamma(link="log"))
-        summary(glm_agg_unweighted)
   
         # remove NaN
         LHS_weights <- LHS_weights |> 
@@ -310,24 +304,17 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
 
   #time-weighting
       glm_time_weighted <- glm(d_dk~tw_in+tw_dens+tw_sr+tw_le, data=LHS_weights, family=Gamma(link="log"))
-        summary(glm_time_weighted)
-            
-    
+
   #primacy weighting
       glm_prim_weighted <- glm(d_dk~prim_av_income+prim_density+prim_sex_ratio+prim_life_expct, data=LHS_weights, family=Gamma(link="log"))
-        summary(lm_prim_weighted)
-            
       #with time
         glm_primlos_weighted <- glm(d_dk~prim_los_av_income+prim_los_density+prim_los_sex_ratio+prim_los_life_expct, data=LHS_weights, family=Gamma(link="log"))
-          summary(lm_primlos_weighted)
               
   #recency weighting
       glm_rec_weighted <- glm(d_dk~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct, data=LHS_weights, family=Gamma(link="log"))
-        summary(lm_rec_weighted)
           
       #With time
         glm_reclos_weighted <- glm(d_dk~rec_los_av_income+rec_los_density+rec_los_sex_ratio+rec_los_life_expct, data=LHS_weights, family=Gamma(link="log"))
-          summary(glm_reclos_weighted)
 
 
 # Model Comparisons -------------------------------------------------------
@@ -357,5 +344,36 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
   AIC(glm_prim_weighted)
   AIC(glm_primlos_weighted)
   AIC(glm_rec_weighted)
-  AIC(glm_reclos_weighted)       
-              
+  AIC(glm_reclos_weighted)
+  
+  cv(lm_agg_unweighted, seed = our_seed)
+  cv(lm_time_weighted, seed = our_seed)
+  cv(lm_prim_weighted, seed = our_seed)
+  cv(lm_primlos_weighted, seed = our_seed)
+  cv(lm_rec_weighted, seed = our_seed)
+  cv(lm_reclos_weighted, seed = our_seed)
+  
+  cv(glm_agg_unweighted, seed = our_seed)
+  cv(glm_time_weighted, seed = our_seed)
+  cv(glm_prim_weighted, seed = our_seed)
+  cv(glm_primlos_weighted, seed = our_seed)
+  cv(glm_rec_weighted, seed = our_seed)
+  cv(glm_reclos_weighted, seed = our_seed) 
+
+  # Plots -------------------------------------------------------------------
+  toplot = data.frame(emmeans(lm_agg_unweighted, ~mean_av_income+mean_density+mean_sex_ratio+mean_life_expct,
+      at=list(mean_av_income=seq(0, 500000, by = 5000))))
+  
+  ggplot(toplot, aes(y=exp(emmean)-1, x=mean_av_income)) + geom_line() + 
+    geom_point(data = LHS_weights, aes(x = mean_av_income, y = d_dk))+
+    geom_ribbon(aes(ymin=exp(emmean-SE)-1, ymax=exp(emmean+SE)-1),col=NA, alpha=.3) + theme_bw()
+  
+  
+  toplot2 = data.frame(emmeans(glm_agg_unweighted, ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct,
+    at=list(rec_los_av_income=seq(0, 500000, by = 5000))))
+#why is this one fucked up?
+  
+  ggplot(toplot2, aes(y=exp(emmean), x=mean_av_income)) + geom_line() +
+    geom_point(data = LHS_weights, aes(x = mean_av_income, y = d_dk))+
+    geom_ribbon(aes(ymin=exp(emmean-SE), ymax=exp(emmean+SE)),col=NA, alpha=.3) + theme_bw()
+  
