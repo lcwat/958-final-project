@@ -352,19 +352,19 @@ plot_param_dist <- function(boot_out, par_num, par_name) {
 
 # Plots -------------------------------------------------------------------
   toplot = data.frame(emmeans(lm_agg_unweighted, ~mean_av_income+mean_density+mean_sex_ratio+mean_life_expct,
-      at=list(mean_av_income=seq(0, 500000, by = 5000))))
+      at=list(mean_sex_ratio=seq(20, 80, by = 5))))
   
-  ggplot(toplot, aes(y=exp(emmean)-1, x=mean_av_income)) + geom_line() + 
-    geom_point(data = LHS_weights, aes(x = mean_av_income, y = d_dk))+
+  ggplot(toplot, aes(y=exp(emmean)-1, x=mean_sex_ratio)) + geom_line() + 
+    geom_point(data = LHS_weights, aes(x = mean_sex_ratio, y = d_dk))+
     geom_ribbon(aes(ymin=exp(emmean-SE)-1, ymax=exp(emmean+SE)-1),col=NA, alpha=.3) + theme_bw()+
-    xlab("Median Income") +ylab("Delay Discounting") +ggtitle("Unweighted Linear Prediction Model")
-  #wtf? why is this a log-line?
+    xlab("Sex Ratio (% male)") +ylab("Delay Discounting") +ggtitle("Unweighted Linear Prediction Model")
   
   toplot2 = data.frame(emmeans(glm_agg_unweighted, ~ mean_av_income + mean_density + mean_sex_ratio + mean_life_expct,
-    at=list(rec_los_av_income=seq(0, 500000, by = 5000))))
-#why is this one fucked up?
+    at=list(mean_sex_ratio=seq(20, 80, by = 5))))
   
-  ggplot(toplot2, aes(y=exp(emmean), x=mean_av_income)) + geom_line() +
-    geom_point(data = LHS_weights, aes(x = mean_av_income, y = d_dk))+
-    geom_ribbon(aes(ymin=exp(emmean-SE), ymax=exp(emmean+SE)),col=NA, alpha=.3) + theme_bw()
+  ggplot(toplot2, aes(y=exp(emmean), x=mean_sex_ratio)) + geom_line(color=clrs[2]) +
+    geom_point(data = LHS_weights, aes(x = mean_sex_ratio, y = d_dk), color=clrs[3])+
+    geom_ribbon(aes(ymin=exp(emmean-SE), ymax=exp(emmean+SE)),fill=clrs[2], color=NA, alpha=.3) + our_theme()+
+    xlab("Sex Ratio") +ylab("Delay Discounting") +ggtitle("Unweighted GLM")
   
+ggsave(filename="plot1.png", device="png")
