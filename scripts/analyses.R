@@ -626,8 +626,16 @@ cv(lm_rec_weighted, seed = our_seed) # cross-validation criterion (mse) = 0.0046
   cv(glm_prim_weighted, seed = our_seed)
   cv(glm_primlos_weighted, seed = our_seed)
   cv(glm_rec_weighted, seed = our_seed)
-  cv(glm_reclos_weighted, seed = our_seed) 
+  cv(glm_reclos_weighted, seed = our_seed)
+  
+  AIC(glm_rec_weighted) + 2*sum(log(LHS_weights$rec_sex_ratio))
+  AIC(lm_rec_weighted)
+  
+  logmodel <- lm(log(d_dk) ~ rec_av_income + rec_density + rec_sex_ratio + rec_life_expct, 
+    data = LHS_weights)
 
+  summary(logmodel)
+  summary(glm_rec_weighted)
 # Plots -------------------------------------------------------------------
   toplot = data.frame(emmeans(lm_rec_weighted, ~rec_av_income+rec_density+rec_sex_ratio+rec_life_expct,
       at=list(rec_sex_ratio=seq(20, 80, by = 5))))
@@ -639,47 +647,11 @@ cv(lm_rec_weighted, seed = our_seed) # cross-validation criterion (mse) = 0.0046
   
   toplot2 = data.frame(emmeans(glm_rec_weighted, ~ rec_av_income + rec_density + rec_sex_ratio + rec_life_expct,
     at=list(rec_sex_ratio=seq(20, 80, by = 5))))
+  toplot2= toplot2 %>% filter(rec_sex_ratio>24)
   
   ggplot(toplot2, aes(y=exp(emmean), x=rec_sex_ratio)) + geom_line(color=clrs[2]) +
     geom_point(data = LHS_weights, aes(x = rec_sex_ratio, y = d_dk), color=clrs[3])+
     geom_ribbon(aes(ymin=exp(emmean-SE), ymax=exp(emmean+SE)),fill=clrs[2], color=NA, alpha=.3) + our_theme()+
-    xlab("Sex Ratio") +ylab("Delay Discounting") +ggtitle("Recency GLM")
+    xlab("Sex Ratio") +ylab("Delay Discounting Score")
   
 ggsave(filename="glm_rec.png", device="png")
-
-
-# tables -----------------------------------------------------------------
-
-summary(lm_agg_unweighted)
-summary(lm_time_weighted)
-summary(lm_prim_weighted)
-summary(lm_rec_weighted)
-
-summary(glm_agg_unweighted)
-summary(glm_time_weighted)
-summary(glm_prim_weighted)
-summary(glm_rec_weighted)
-
-lm_agg_unweighted_t<-tidy(lm_agg_unweighted)
-write.csv(lm_agg_unweighted_t, "lm_agg_unweighted.csv")
-
-lm_los_t<-tidy(lm_los)
-write.csv(lm_los_t, "lm_los.csv")
-
-lm_prim_weighted_t<-tidy(lm_prim_weighted)
-write.csv(lm_prim_weighted_t, "lm_prim_weighted.csv")
-
-lm_rec_weighted_t<-tidy(lm_rec_weighted)
-write.csv(lm_rec_weighted, "lm_rec_weighted.csv")
-
-glm_agg_unweighted_t<-tidy(glm_agg_unweighted)
-write.csv(glm_agg_unweighted_t, "glm_agg_unweighted.csv")
-
-glm_los_t<-tidy(glm_los)
-write.csv(glm_los_t, "glm_los.csv")
-
-glm_prim_weighted_t<-tidy(glm_prim_weighted)
-write.csv(glm_prim_weighted_t, "glm_prim_weighted.csv")
-
-glm_rec_weighted_t<-tidy(glm_rec_weighted)
-write.csv(glm_rec_weighted, "glm_rec_weighted.csv")
